@@ -1,3 +1,5 @@
+#pragma once
+
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
 

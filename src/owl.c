@@ -12,6 +12,7 @@
 #include "decoration.h"
 #include "dnd.h"
 #include "gamma_control.h"
+#include "session_lock.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,6 +43,7 @@
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_session_lock_v1.h>
 
 /* we initialize an instance of our global state */
 struct owl_server server;
@@ -223,11 +225,9 @@ main(int argc, char *argv[]) {
   server.top_tree = wlr_scene_tree_create(&server.scene->tree);
   server.fullscreen_tree = wlr_scene_tree_create(&server.scene->tree);
   server.overlay_tree = wlr_scene_tree_create(&server.scene->tree);
+  server.session_lock_tree = wlr_scene_tree_create(&server.scene->tree);
 
-  /* Set up xdg-shell version 6. The xdg-shell is a Wayland protocol which is
-   * used for application windows. For more detail on shells, refer to
-   * https://drewdevault.com/2018/07/29/Wayland-shells.html.
-   */
+  /* set up xdg-shell version 6 */
   server.xdg_shell = wlr_xdg_shell_create(server.wl_display, 6);
   server.new_xdg_toplevel.notify = server_handle_new_toplevel;
   wl_signal_add(&server.xdg_shell->events.new_toplevel, &server.new_xdg_toplevel);
@@ -334,9 +334,14 @@ main(int argc, char *argv[]) {
   wlr_virtual_keyboard_manager_v1_create(server.wl_display);
 
   server.gamma_control_manager = wlr_gamma_control_manager_v1_create(server.wl_display);
-
   server.set_gamma.notify = gamma_control_set_gamma;
   wl_signal_add(&server.gamma_control_manager->events.set_gamma, &server.set_gamma);
+
+  server.session_lock_manager = wlr_session_lock_manager_v1_create(server.wl_display);
+  server.new_lock.notify = session_lock_manager_handle_new;
+  server.lock_manager_destroy.notify = session_lock_manager_handle_destroy;
+  wl_signal_add(&server.session_lock_manager->events.new_lock, &server.new_lock);
+  wl_signal_add(&server.session_lock_manager->events.destroy, &server.lock_manager_destroy);
 
   /* Add a Unix socket to the Wayland display. */
   const char *socket = wl_display_add_socket_auto(server.wl_display);

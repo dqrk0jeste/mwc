@@ -2,6 +2,7 @@
 
 #include "keyboard.h"
 #include "pointer.h"
+#include "session_lock.h"
 
 #include <wayland-server-protocol.h>
 #include <wlr/util/box.h>
@@ -37,6 +38,7 @@ struct owl_server {
 	struct wlr_scene_tree *top_tree;
 	struct wlr_scene_tree *fullscreen_tree;
 	struct wlr_scene_tree *overlay_tree;
+	struct wlr_scene_tree *session_lock_tree;
 
 	struct wlr_xdg_shell *xdg_shell;
 	struct wl_listener new_xdg_toplevel;
@@ -86,7 +88,7 @@ struct owl_server {
   struct owl_workspace *active_workspace;
   /* toplevel with keyboard focus */
   struct owl_toplevel *focused_toplevel;
-  /* keeps track if there is a layer surface that takes exclusive keyboard focus */
+  /* keeps track if there is a layer surface that takes keyboard focus */
   struct owl_layer_surface *focused_layer_surface;
   bool exclusive;
   /* last focused toplevel before layer surface was given focus */
@@ -103,6 +105,11 @@ struct owl_server {
 
   struct wlr_gamma_control_manager_v1 *gamma_control_manager;
   struct wl_listener set_gamma;
+
+  struct wlr_session_lock_manager_v1 *session_lock_manager;
+  struct wl_listener new_lock;
+  struct wl_listener lock_manager_destroy;
+  struct owl_lock *lock;
 
   struct owl_config *config;
 
