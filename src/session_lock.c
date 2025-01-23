@@ -91,6 +91,7 @@ session_lock_handle_unlock(struct wl_listener *listener, void *data) {
   wl_list_for_each(o, &server.outputs, link) {
     /* destroy the rectangle blocking the view */
     wlr_scene_node_destroy(&o->session_lock_rect->node);
+    o->session_lock_rect = NULL;
   }
 }
 
