@@ -796,6 +796,7 @@ unfocus_focused_toplevel(void) {
   wlr_xdg_toplevel_set_activated(toplevel->xdg_toplevel, false);
   /* clear all focus on the keyboard, focusing new should set new toplevel focus */
   wlr_seat_keyboard_clear_focus(server.seat);
+  wlr_seat_pointer_clear_focus(server.seat);
 
   ipc_broadcast_message(IPC_ACTIVE_TOPLEVEL);
   wlr_foreign_toplevel_handle_v1_set_activated(toplevel->foreign_toplevel_handle, false);
@@ -807,8 +808,6 @@ unfocus_focused_toplevel(void) {
 void
 focus_toplevel(struct owl_toplevel *toplevel) {
   assert(toplevel != NULL);
-
-  /*if(server.layer_exclusive_keyboard != NULL) return;*/
   if(server.lock != NULL || server.exclusive) return;
 
   if(toplevel->workspace->fullscreen_toplevel != NULL
@@ -829,12 +828,15 @@ focus_toplevel(struct owl_toplevel *toplevel) {
     wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
   }
 
+  wlr_log(WLR_ERROR, "title: %s", toplevel->xdg_toplevel->title);
 	wlr_xdg_toplevel_set_activated(toplevel->xdg_toplevel, true);
+  wlr_log(WLR_ERROR, "title: %s set activated", toplevel->xdg_toplevel->title);
   wlr_scene_node_raise_to_top(&toplevel->scene_tree->node);
 
   struct wlr_seat *seat = server.seat;
   struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
   if(keyboard != NULL) {
+    wlr_log(WLR_ERROR, "keyboard");
     wlr_seat_keyboard_notify_enter(seat, toplevel->xdg_toplevel->base->surface,
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);

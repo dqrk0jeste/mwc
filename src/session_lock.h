@@ -1,11 +1,14 @@
 #pragma once
 
 #include "something.h"
+#include <wayland-server-core.h>
 #include <wlr/types/wlr_session_lock_v1.h>
 
 struct owl_lock {
   struct wlr_session_lock_v1 *wlr_lock;
   bool locked;
+
+  struct wl_list surfaces;
 
   struct wl_listener new_surface;
   struct wl_listener unlock;
@@ -16,6 +19,13 @@ struct owl_lock_surface {
   struct wlr_session_lock_surface_v1 *wlr_lock_surface;
   struct wlr_scene_tree *scene_tree;
   struct owl_something something;
+  struct owl_lock *lock;
+
+  struct wl_list link;
+
+  struct wl_listener map;
+  struct wl_listener unmap;
+  struct wl_listener destroy;
 };
 
 void

@@ -319,6 +319,10 @@ void
 focus_output(struct owl_output *output, enum owl_direction side) {
   assert(output != NULL);
 
+  /*if(server.lock != NULL) {*/
+  /*  focus_lock_surface(server.lock->wlr_lock);*/
+  /*}*/
+
   struct owl_toplevel *focus_next = NULL;
   struct owl_workspace *workspace = output->active_workspace;
 
@@ -389,8 +393,6 @@ output_handle_request_state(struct wl_listener *listener, void *data) {
   wlr_output_commit_state(output->wlr_output, event->state);
 }
 
-/* TODO: this needs tweaking in the future, rn outputs are not removed from
- * the layout, and workspaces and not updated. */
 void
 output_handle_destroy(struct wl_listener *listener, void *data) {
   struct owl_output *output = wl_container_of(listener, output, destroy);

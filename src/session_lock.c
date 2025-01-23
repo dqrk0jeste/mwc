@@ -13,6 +13,31 @@
 extern struct owl_server server;
 
 void
+lock_surface_handle_map(struct wl_listener *listener, void *data) {
+	struct owl_lock_surface *lock_surface = wl_container_of(listener, lock_surface, map);
+
+  focus_lock_surface(lock_surface);
+}
+
+void
+lock_surface_handle_unmap(struct wl_listener *listener, void *data) {
+	struct owl_lock_surface *lock_surface = wl_container_of(listener, lock_surface, unmap);
+
+  wl_list_remove(&lock_surface->link);
+  if(lock_surface->lock->locked && !wl_list_empty(&lock_surface->lock->surfaces)) {
+    struct owl_lock_surface *next = wl_container_of(lock_surface->lock->surfaces.next, next, link);
+    focus_lock_surface(next);
+  }
+}
+
+void
+lock_surface_handle_destroy(struct wl_listener *listener, void *data) {
+	struct owl_lock_surface *lock_surface = wl_container_of(listener, lock_surface, destroy);
+
+  free(lock_surface);
+}
+
+void
 session_lock_handle_new_surface(struct wl_listener *listener, void *data) {
 	struct owl_lock *lock = wl_container_of(listener, lock, new_surface);
 
@@ -22,6 +47,8 @@ session_lock_handle_new_surface(struct wl_listener *listener, void *data) {
   struct owl_lock_surface *lock_surface = calloc(1, sizeof(*lock_surface));
   lock_surface->wlr_lock_surface = wlr_lock_surface;
 
+  wl_list_insert(&lock->surfaces, &lock_surface->link);
+
 	lock_surface->scene_tree = wlr_scene_subsurface_tree_create(server.session_lock_tree,
                                                               wlr_lock_surface->surface);
   wlr_lock_surface->data = lock_surface;
@@ -30,14 +57,22 @@ session_lock_handle_new_surface(struct wl_listener *listener, void *data) {
   lock_surface->something.lock_surface = lock_surface;
 
   lock_surface->scene_tree->node.data = &lock_surface->something;
+  lock_surface->lock = lock;
+
+  lock_surface->map.notify = lock_surface_handle_map;
+  wl_signal_add(&wlr_lock_surface->surface->events.map, &lock_surface->map);
+
+  lock_surface->unmap.notify = lock_surface_handle_unmap;
+  wl_signal_add(&wlr_lock_surface->surface->events.unmap, &lock_surface->unmap);
+
+  lock_surface->destroy.notify = lock_surface_handle_destroy;
+  wl_signal_add(&wlr_lock_surface->surface->events.destroy, &lock_surface->destroy);
 
   struct wlr_box output_box;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);
 
   wlr_scene_node_set_position(&lock_surface->scene_tree->node, output_box.x, output_box.y);
   wlr_session_lock_surface_v1_configure(wlr_lock_surface, output_box.width, output_box.height);
-
-  focus_lock_surface(lock_surface);
 }
 
 void
@@ -56,8 +91,8 @@ session_lock_handle_unlock(struct wl_listener *listener, void *data) {
   lock->locked = false;
   server.lock = NULL;
 
-  struct wlr_output *wlr_output = wlr_output_layout_output_at(
-    server.output_layout, server.cursor->x, server.cursor->y);
+  struct wlr_output *wlr_output = wlr_output_layout_output_at(server.output_layout,
+                                                              server.cursor->x, server.cursor->y);
   struct owl_output *output = wlr_output->data;
 
   bool focused = false;
@@ -129,6 +164,9 @@ session_lock_manager_handle_new(struct wl_listener *listener, void *data) {
   struct owl_lock *lock = calloc(1, sizeof(*lock));
   lock->wlr_lock = wlr_lock;
   lock->locked = true;
+
+  wl_list_init(&lock->surfaces);
+
   server.lock = lock;
 
   float black[4] = { 0.0, 0.0, 0.0, 1.0 };
@@ -142,6 +180,7 @@ session_lock_manager_handle_new(struct wl_listener *listener, void *data) {
     wlr_scene_node_set_position(&o->session_lock_rect->node, output_box.x, output_box.y);
   }
 
+  /* needs improvement */
   unfocus_focused_toplevel();
 
   lock->new_surface.notify = session_lock_handle_new_surface;
