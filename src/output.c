@@ -319,9 +319,13 @@ void
 focus_output(struct owl_output *output, enum owl_direction side) {
   assert(output != NULL);
 
-  /*if(server.lock != NULL) {*/
-  /*  focus_lock_surface(server.lock->wlr_lock);*/
-  /*}*/
+  if(server.lock != NULL) {
+    if(!wl_list_empty(&server.lock->surfaces)) {
+      struct owl_lock_surface *l = wl_container_of(server.lock->surfaces.next, l, link);
+      focus_lock_surface(l);
+    }
+    return;
+  }
 
   struct owl_toplevel *focus_next = NULL;
   struct owl_workspace *workspace = output->active_workspace;
