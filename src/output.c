@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "output.h"
 
 #include "owl.h"
@@ -377,6 +379,8 @@ output_handle_frame(struct wl_listener *listener, void *data) {
 
   struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(server.scene,
                                                                      output->wlr_output);
+  wlr_scene_optimized_blur_set_size(server.blur_tree,
+			output->wlr_output->width, output->wlr_output->height);
 
   wlr_scene_output_commit(scene_output, NULL);
 

@@ -1,5 +1,10 @@
 #include "owl.h"
 
+#include <scenefx/types/wlr_scene.h>
+#include <scenefx/render/fx_renderer/fx_renderer.h>
+#include <scenefx/types/fx/blur_data.h>
+#include <scenefx/types/fx/corner_location.h>
+
 #include "helpers.h"
 #include "ipc.h"
 #include "keyboard.h"
@@ -13,6 +18,11 @@
 #include "dnd.h"
 #include "gamma_control.h"
 #include "session_lock.h"
+
+#include <wayland-server-protocol.h>
+#include <wlr/util/box.h>
+#include <wlr/types/wlr_server_decoration.h>
+#include <wlr/types/wlr_gamma_control_v1.h>
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -168,7 +178,7 @@ main(int argc, char *argv[]) {
    * can also specify a renderer using the WLR_RENDERER env var.
    * The renderer is responsible for defining the various pixel formats it
    * supports for shared memory, this configures that for clients. */
-  server.renderer = wlr_renderer_autocreate(server.backend);
+  server.renderer = fx_renderer_create(server.backend);
   if(server.renderer == NULL) {
     wlr_log(WLR_ERROR, "failed to create wlr_renderer");
     return 1;
@@ -219,6 +229,7 @@ main(int argc, char *argv[]) {
 
   /* create all the scenes in the correct order */
   server.background_tree = wlr_scene_tree_create(&server.scene->tree);
+	server.blur_tree = wlr_scene_optimized_blur_create(&server.scene->tree, 0, 0);
   server.bottom_tree = wlr_scene_tree_create(&server.scene->tree);
   server.tiled_tree = wlr_scene_tree_create(&server.scene->tree);
   server.floating_tree = wlr_scene_tree_create(&server.scene->tree);
@@ -227,6 +238,8 @@ main(int argc, char *argv[]) {
   server.overlay_tree = wlr_scene_tree_create(&server.scene->tree);
   server.session_lock_tree = wlr_scene_tree_create(&server.scene->tree);
 
+  struct blur_data blur_data = blur_data_get_default();
+	wlr_scene_set_blur_data(server.scene, blur_data);
   /* set up xdg-shell version 6 */
   server.xdg_shell = wlr_xdg_shell_create(server.wl_display, 6);
   server.new_xdg_toplevel.notify = server_handle_new_toplevel;

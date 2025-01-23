@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "rendering.h"
 
 #include "helpers.h"
@@ -226,6 +228,10 @@ void
 scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
                            int sx, int sy, void *data) {
   wlr_scene_buffer_set_opacity(buffer, *(double *)data);
+  wlr_scene_buffer_set_corner_radius(buffer, 12, CORNER_LOCATION_ALL);
+  wlr_scene_buffer_set_backdrop_blur(buffer, true);
+  wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
+  wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
 }
 
 void

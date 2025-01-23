@@ -4,10 +4,6 @@
 #include "pointer.h"
 #include "session_lock.h"
 
-#include <wayland-server-protocol.h>
-#include <wlr/util/box.h>
-#include <wlr/types/wlr_server_decoration.h>
-#include <wlr/types/wlr_gamma_control_v1.h>
 
 #define max(a, b) (a) > (b) ? (a) : (b)
 #define min(a, b) (a) < (b) ? (a) : (b)
@@ -31,10 +27,11 @@ struct owl_server {
 	struct wlr_scene *scene;
 	struct wlr_scene_output_layout *scene_layout;
 
+	struct wlr_scene_tree *background_tree;
+  struct wlr_scene_optimized_blur *blur_tree;
+	struct wlr_scene_tree *bottom_tree;
 	struct wlr_scene_tree *floating_tree;
 	struct wlr_scene_tree *tiled_tree;
-	struct wlr_scene_tree *background_tree;
-	struct wlr_scene_tree *bottom_tree;
 	struct wlr_scene_tree *top_tree;
 	struct wlr_scene_tree *fullscreen_tree;
 	struct wlr_scene_tree *overlay_tree;
