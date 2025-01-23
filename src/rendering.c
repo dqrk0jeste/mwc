@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <wlr/types/wlr_subcompositor.h>
 #include <wlr/util/log.h>
 
 extern struct owl_server server;
@@ -228,7 +229,9 @@ void
 scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
                            int sx, int sy, void *data) {
   wlr_scene_buffer_set_opacity(buffer, *(double *)data);
-  wlr_scene_buffer_set_corner_radius(buffer, 12, CORNER_LOCATION_ALL);
+
+  wlr_scene_buffer_set_corner_radius(buffer, 16, CORNER_LOCATION_ALL);
+
   wlr_scene_buffer_set_backdrop_blur(buffer, true);
   wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
   wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
@@ -242,7 +245,8 @@ toplevel_handle_opacity(struct owl_toplevel *toplevel) {
       ? toplevel->active_opacity
       : toplevel->inactive_opacity;
 
-  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node, scene_buffer_apply_opacity, &opacity);
+  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
+                                 scene_buffer_apply_opacity, &opacity);
   /* apply opacity to placeholders rects so the surface is actually transparent */
   float applied_opacity[4];
   applied_opacity[0] = server.config->placeholder_color[0];
