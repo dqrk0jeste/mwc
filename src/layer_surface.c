@@ -21,7 +21,7 @@ server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
 
   struct owl_layer_surface *layer_surface = calloc(1, sizeof(*layer_surface));
   layer_surface->wlr_layer_surface = wlr_layer_surface;
-  layer_surface->wlr_layer_surface->data = layer_surface;
+  wlr_layer_surface->data = layer_surface;
 
   layer_surface->something.type = OWL_LAYER_SURFACE;
   layer_surface->something.layer_surface = layer_surface;
@@ -143,18 +143,6 @@ layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
         focused = true;
       }
     }
-    wl_list_for_each(l, &output->layers.bottom, link) {
-      if(l->wlr_layer_surface->current.keyboard_interactive) {
-        focus_layer_surface(l);
-        focused = true;
-      }
-    }
-    wl_list_for_each(l, &output->layers.background, link) {
-      if(l->wlr_layer_surface->current.keyboard_interactive) {
-        focus_layer_surface(l);
-        focused = true;
-      }
-    }
 
     if(!focused) {
       /* dont focus things that are not on the screen */
@@ -201,8 +189,8 @@ layer_surface_handle_new_popup(struct wl_listener *listener, void *data) {
 
   popup->something.type = OWL_POPUP;
   popup->something.popup = popup;
-  popup->scene_tree->node.data = &popup->something;
 
+  popup->scene_tree->node.data = &popup->something;
   popup->xdg_popup->base->data = popup->scene_tree;
 }
 

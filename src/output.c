@@ -422,6 +422,10 @@ output_handle_destroy(struct wl_listener *listener, void *data) {
     }
   }
 
+  if(output->session_lock_rect != NULL) {
+    wlr_scene_node_destroy(&output->session_lock_rect->node);
+  }
+
   wl_list_remove(&output->frame.link);
   wl_list_remove(&output->request_state.link);
   wl_list_remove(&output->destroy.link);

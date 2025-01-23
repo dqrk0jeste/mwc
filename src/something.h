@@ -6,10 +6,12 @@ enum owl_type {
   OWL_TOPLEVEL,
   OWL_POPUP,
   OWL_LAYER_SURFACE,
+  OWL_LOCK_SURFACE,
 };
 
 struct owl_toplevel;
 struct owl_layer_surface;
+struct owl_lock_surface;
 
 struct owl_something {
   enum owl_type type;
@@ -17,6 +19,7 @@ struct owl_something {
     struct owl_toplevel *toplevel;
     struct owl_popup *popup;
     struct owl_layer_surface *layer_surface;
+    struct owl_lock_surface *lock_surface;
   };
 };
 

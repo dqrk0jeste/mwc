@@ -1,47 +1,96 @@
 #include "session_lock.h"
 
 #include "layer_surface.h"
+#include "something.h"
+#include "toplevel.h"
 #include "owl.h"
 #include "rendering.h"
 #include "wlr/util/log.h"
 
 #include <wayland-server-core.h>
+#include <wayland-util.h>
 
 extern struct owl_server server;
 
 void
 session_lock_handle_new_surface(struct wl_listener *listener, void *data) {
-  wlr_log(WLR_ERROR, "new surface");
 	struct owl_lock *lock = wl_container_of(listener, lock, new_surface);
 
-	struct wlr_session_lock_surface_v1 *lock_surface = data;
-  struct owl_output *output = lock_surface->output->data;
+	struct wlr_session_lock_surface_v1 *wlr_lock_surface = data;
+  struct owl_output *output = wlr_lock_surface->output->data;
 
-	struct wlr_scene_tree *surface_tree =
-		wlr_scene_subsurface_tree_create(server.session_lock_tree, lock_surface->surface);
-  wlr_scene_node_raise_to_top(&surface_tree->node);
+  struct owl_lock_surface *lock_surface = calloc(1, sizeof(*lock_surface));
+  lock_surface->wlr_lock_surface = wlr_lock_surface;
+
+	lock_surface->scene_tree = wlr_scene_subsurface_tree_create(server.session_lock_tree,
+                                                              wlr_lock_surface->surface);
+  wlr_lock_surface->data = lock_surface;
+
+  lock_surface->something.type = OWL_LOCK_SURFACE;
+  lock_surface->something.lock_surface = lock_surface;
+
+  lock_surface->scene_tree->node.data = &lock_surface->something;
 
   struct wlr_box output_box;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);
 
-  wlr_scene_node_set_position(&surface_tree->node, output_box.x, output_box.y);
-  wlr_session_lock_surface_v1_configure(lock_surface, output_box.width, output_box.height);
+  wlr_scene_node_set_position(&lock_surface->scene_tree->node, output_box.x, output_box.y);
+  wlr_session_lock_surface_v1_configure(wlr_lock_surface, output_box.width, output_box.height);
+
+  focus_lock_surface(lock_surface);
+}
+
+void
+focus_lock_surface(struct owl_lock_surface *lock_surface) {
+  struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(server.seat);
+  if(keyboard != NULL) {
+    wlr_seat_keyboard_notify_enter(server.seat, lock_surface->wlr_lock_surface->surface,
+                                   keyboard->keycodes, keyboard->num_keycodes,
+                                   &keyboard->modifiers);
+  }
 }
 
 void
 session_lock_handle_unlock(struct wl_listener *listener, void *data) {
-  struct owl_lock *lock = wl_container_of(listener, lock, destroy);
+  struct owl_lock *lock = wl_container_of(listener, lock, unlock);
   lock->locked = false;
 
-  if(server.focused_layer_surface != NULL) {
-    focus_layer_surface(server.focused_layer_surface);
-  } else if(server.focused_toplevel) {
-    /* this wont work */
-    /*focus_toplevel(server.focused_layer_surface);*/
+  struct wlr_output *wlr_output = wlr_output_layout_output_at(
+    server.output_layout, server.cursor->x, server.cursor->y);
+  struct owl_output *output = wlr_output->data;
+
+  bool focused = false;
+  struct owl_layer_surface *l;
+  wl_list_for_each(l, &output->layers.overlay, link) {
+    if(l->wlr_layer_surface->current.keyboard_interactive) {
+      focus_layer_surface(l);
+      focused = true;
+    }
+  }
+  wl_list_for_each(l, &output->layers.top, link) {
+    if(l->wlr_layer_surface->current.keyboard_interactive) {
+      focus_layer_surface(l);
+      focused = true;
+    }
   }
 
-  /* destroy the rectangle blocking the view */
-  /*wlr_scene_node_destroy(&lock->rect->node);*/
+  if(!focused) {
+    if(!wl_list_empty(&server.active_workspace->masters)) {
+      struct owl_toplevel *first = wl_container_of(server.active_workspace->masters.next,
+                                                   first, link);
+      focus_toplevel(first);
+    } else if(!wl_list_empty(&server.active_workspace->floating_toplevels)) {
+      struct owl_toplevel *first = wl_container_of(server.active_workspace->floating_toplevels.next,
+                                                   first, link);
+      focus_toplevel(first);
+    }
+  }
+
+  struct owl_output *o; 
+  wl_list_for_each(o, &server.outputs, link) {
+    /* destroy the rectangle blocking the view */
+    wlr_scene_node_destroy(&o->session_lock_rect->node);
+  }
 }
 
 void
@@ -79,8 +128,18 @@ session_lock_manager_handle_new(struct wl_listener *listener, void *data) {
   lock->wlr_lock = wlr_lock;
   lock->locked = true;
 
-  float black[4] = { 0.0, 0.0, 0.0, 0.0 };
-  lock->rect = wlr_scene_rect_create(server.session_lock_tree, 5000, 5000, black);
+  float black[4] = { 0.0, 0.0, 0.0, 1.0 };
+  struct owl_output *o;
+  wl_list_for_each(o, &server.outputs, link) {
+    struct wlr_box output_box;
+    wlr_output_layout_get_box(server.output_layout, o->wlr_output, &output_box);
+
+    o->session_lock_rect = wlr_scene_rect_create(server.session_lock_tree,
+                                                 output_box.width, output_box.height, black);
+    wlr_scene_node_set_position(&o->session_lock_rect->node, output_box.x, output_box.y);
+  }
+
+  unfocus_focused_toplevel();
 
   lock->new_surface.notify = session_lock_handle_new_surface;
   wl_signal_add(&wlr_lock->events.new_surface, &lock->new_surface);

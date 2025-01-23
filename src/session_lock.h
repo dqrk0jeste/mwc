@@ -1,16 +1,21 @@
 #pragma once
 
+#include "something.h"
 #include <wlr/types/wlr_session_lock_v1.h>
 
 struct owl_lock {
   struct wlr_session_lock_v1 *wlr_lock;
   bool locked;
 
-  struct wlr_scene_rect *rect;
-
   struct wl_listener new_surface;
   struct wl_listener unlock;
   struct wl_listener destroy;
+};
+
+struct owl_lock_surface {
+  struct wlr_session_lock_surface_v1 *wlr_lock_surface;
+  struct wlr_scene_tree *scene_tree;
+  struct owl_something something;
 };
 
 void
@@ -18,3 +23,6 @@ session_lock_manager_handle_new(struct wl_listener *listener, void *data);
 
 void
 session_lock_manager_handle_destroy(struct wl_listener *listener, void *data);
+
+void
+focus_lock_surface(struct owl_lock_surface *lock_surface);

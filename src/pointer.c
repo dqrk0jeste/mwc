@@ -153,8 +153,10 @@ cursor_handle_motion(uint32_t time) {
 
   if(something->type == OWL_TOPLEVEL) {
     focus_toplevel(something->toplevel);
-  } else {
+  } else if(something->type == OWL_LAYER_SURFACE){
     focus_layer_surface(something->layer_surface);
+  } else if(something->type == OWL_LOCK_SURFACE) {
+    focus_lock_surface(something->lock_surface);
   }
 
   wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
