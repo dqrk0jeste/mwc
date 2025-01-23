@@ -20,16 +20,16 @@ extern struct owl_server server;
 bool
 server_handle_keybinds(struct owl_keyboard *keyboard, uint32_t keycode,
                        enum wl_keyboard_key_state state) {
+  if(server.lock != NULL) return false;
+
   uint32_t modifiers = wlr_keyboard_get_modifiers(keyboard->wlr_keyboard);
-  /* we create new empty state so we can get raw, unmodified key.
+  /* we use empty state so we can get raw, unmodified key.
    * this is used becuase we already handle modifiers explicitly,
    * and dont want them to interfere. for example, shift would make it
    * harder to specify the right key e.g. we would have to write
    *   keybind alt+shift # <do_something>
    * instead of
    *   alt+shift 3 <do_something> */
-  /* TODO: cache this */
-  /*FIXME*/
 
   const xkb_keysym_t *syms;
   int count = xkb_state_key_get_syms(keyboard->empty, keycode, &syms);

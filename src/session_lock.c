@@ -54,6 +54,7 @@ void
 session_lock_handle_unlock(struct wl_listener *listener, void *data) {
   struct owl_lock *lock = wl_container_of(listener, lock, unlock);
   lock->locked = false;
+  server.lock = NULL;
 
   struct wlr_output *wlr_output = wlr_output_layout_output_at(
     server.output_layout, server.cursor->x, server.cursor->y);
@@ -127,6 +128,7 @@ session_lock_manager_handle_new(struct wl_listener *listener, void *data) {
   struct owl_lock *lock = calloc(1, sizeof(*lock));
   lock->wlr_lock = wlr_lock;
   lock->locked = true;
+  server.lock = lock;
 
   float black[4] = { 0.0, 0.0, 0.0, 1.0 };
   struct owl_output *o;

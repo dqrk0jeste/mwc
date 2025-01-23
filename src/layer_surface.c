@@ -196,6 +196,8 @@ layer_surface_handle_new_popup(struct wl_listener *listener, void *data) {
 
 void
 focus_layer_surface(struct owl_layer_surface *layer_surface) {
+  if(server.lock != NULL) return;
+
   enum zwlr_layer_surface_v1_keyboard_interactivity keyboard_interactive =
     layer_surface->wlr_layer_surface->current.keyboard_interactive;
 

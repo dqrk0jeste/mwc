@@ -809,7 +809,7 @@ focus_toplevel(struct owl_toplevel *toplevel) {
   assert(toplevel != NULL);
 
   /*if(server.layer_exclusive_keyboard != NULL) return;*/
-  if(server.exclusive) return;
+  if(server.lock != NULL || server.exclusive) return;
 
   if(toplevel->workspace->fullscreen_toplevel != NULL
     && toplevel != toplevel->workspace->fullscreen_toplevel) return;
