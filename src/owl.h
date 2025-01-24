@@ -8,6 +8,7 @@
 #include <wlr/util/box.h>
 #include <wlr/types/wlr_server_decoration.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
+#include <wlr/types/wlr_cursor_shape_v1.h>
 
 #define max(a, b) (a) > (b) ? (a) : (b)
 #define min(a, b) (a) < (b) ? (a) : (b)
@@ -54,6 +55,10 @@ struct owl_server {
 	struct wl_listener cursor_button;
 	struct wl_listener cursor_axis;
 	struct wl_listener cursor_frame;
+
+  struct wlr_cursor_shape_manager_v1 *cursor_shape_manager;
+  struct wl_listener request_cursor_shape;
+  struct wl_listener cursor_shape_manager_destroy;
 
 	struct wlr_seat *seat;
 	struct wl_listener new_input;

@@ -819,15 +819,12 @@ focus_toplevel(struct owl_toplevel *toplevel) {
     wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
   }
 
-  wlr_log(WLR_ERROR, "title: %s", toplevel->xdg_toplevel->title);
 	wlr_xdg_toplevel_set_activated(toplevel->xdg_toplevel, true);
-  wlr_log(WLR_ERROR, "title: %s set activated", toplevel->xdg_toplevel->title);
   wlr_scene_node_raise_to_top(&toplevel->scene_tree->node);
 
   struct wlr_seat *seat = server.seat;
   struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
   if(keyboard != NULL) {
-    wlr_log(WLR_ERROR, "keyboard");
     wlr_seat_keyboard_notify_enter(seat, toplevel->xdg_toplevel->base->surface,
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);

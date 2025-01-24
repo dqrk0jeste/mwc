@@ -44,7 +44,6 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_session_lock_v1.h>
-#include <wlr/types/wlr_cursor_shape_v1.h>
 
 /* we initialize an instance of our global state */
 struct owl_server server;
@@ -83,8 +82,19 @@ server_handle_new_input(struct wl_listener *listener, void *data) {
 }
 
 void
+server_handle_cursor_shape_destroy(struct wl_listener *listener, void *data) {
+  wl_list_remove(&server.request_cursor_shape.link);
+  wl_list_remove(&server.cursor_shape_manager_destroy.link);
+}
+
+void
 server_handle_request_cursor_shape(struct wl_listener *listener, void *data) {
-  
+  struct wlr_cursor_shape_manager_v1_request_set_shape_event *event = data;
+  struct wlr_seat_client *focused_client = server.seat->pointer_state.focused_client;
+  if(focused_client == event->seat_client) {
+    const char *name = wlr_cursor_shape_v1_name(event->shape);
+    wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, name);
+  }
 }
 
 void 
@@ -349,7 +359,11 @@ main(int argc, char *argv[]) {
   wl_signal_add(&server.session_lock_manager->events.new_lock, &server.new_lock);
   wl_signal_add(&server.session_lock_manager->events.destroy, &server.lock_manager_destroy);
 
-  wlr_cursor_shape_manager_v1_create(server.wl_display, 4);
+  server.cursor_shape_manager = wlr_cursor_shape_manager_v1_create(server.wl_display, 1);
+  server.request_cursor_shape.notify = server_handle_request_cursor_shape;
+  server.cursor_shape_manager_destroy.notify = server_handle_cursor_shape_destroy;
+  wl_signal_add(&server.cursor_shape_manager->events.request_set_shape, &server.request_cursor_shape);
+  wl_signal_add(&server.cursor_shape_manager->events.destroy, &server.cursor_shape_manager_destroy);
 
   /* Add a Unix socket to the Wayland display. */
   const char *socket = wl_display_add_socket_auto(server.wl_display);
