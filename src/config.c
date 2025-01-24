@@ -546,12 +546,8 @@ config_handle_value(struct owl_config *c, char *keyword, char **args, size_t arg
     c->animation_curve[3] = atof(args[3]);
     bake_bezier_curve_points(c);
   } else if(strcmp(keyword, "placeholder_color") == 0) {
-    if(arg_count < 4) goto invalid;
-
-    c->placeholder_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
-    c->placeholder_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
-    c->placeholder_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
-    c->placeholder_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+    wlr_log(WLR_ERROR, "placeholder_color has been depricated, and should not be used anymore");
+    goto depricated;
   } else if(strcmp(keyword, "client_side_decorations") == 0) {
     if(arg_count < 1) goto invalid;
 
@@ -585,6 +581,7 @@ config_handle_value(struct owl_config *c, char *keyword, char **args, size_t arg
 
 invalid: 
   wlr_log(WLR_ERROR, "invalid args to %s", keyword);
+depricated:
   free(keyword);
   config_free_args(args, arg_count);
   return false;

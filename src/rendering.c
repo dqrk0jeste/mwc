@@ -84,31 +84,6 @@ toplevel_apply_clip(struct owl_toplevel *toplevel) {
   }
 }
 
-void
-toplevel_draw_placeholder(struct owl_toplevel *toplevel) {
-  uint32_t width, height;
-  toplevel_get_actual_size(toplevel, &width, &height);
-
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
-  if(width > geometry.width) {
-    wlr_scene_node_set_position(&toplevel->placeholders[0]->node,
-                                geometry.width, 0);
-    wlr_scene_rect_set_size(toplevel->placeholders[0],
-                            width - geometry.width, min(geometry.height, height));
-  } else {
-    wlr_scene_rect_set_size(toplevel->placeholders[0], 0, 0);
-  }
-
-  if(height > geometry.height) {
-    wlr_scene_node_set_position(&toplevel->placeholders[1]->node,
-                                0, geometry.height);
-    wlr_scene_rect_set_size(toplevel->placeholders[1],
-                            width, height - geometry.height);
-  } else {
-    wlr_scene_rect_set_size(toplevel->placeholders[1], 0, 0);
-  }
-}
-
 double
 find_animation_curve_at(double t) {
   size_t down = 0;
@@ -182,7 +157,6 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
   }
 
   toplevel_draw_borders(toplevel);
-  toplevel_draw_placeholder(toplevel);
   toplevel_apply_clip(toplevel);
 
   return need_more_frames;
@@ -237,15 +211,6 @@ toplevel_handle_opacity(struct owl_toplevel *toplevel) {
       : toplevel->inactive_opacity;
 
   wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node, scene_buffer_apply_opacity, &opacity);
-  /* apply opacity to placeholders rects so the surface is actually transparent */
-  float applied_opacity[4];
-  applied_opacity[0] = server.config->placeholder_color[0];
-  applied_opacity[1] = server.config->placeholder_color[1];
-  applied_opacity[2] = server.config->placeholder_color[2];
-  applied_opacity[3] = server.config->placeholder_color[3] * opacity;
-
-  wlr_scene_rect_set_color(toplevel->placeholders[0], applied_opacity);
-  wlr_scene_rect_set_color(toplevel->placeholders[1], applied_opacity);
 }
 
 void

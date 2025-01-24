@@ -169,15 +169,6 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
    * so we disable it until the next frame */
   wlr_scene_node_set_enabled(&toplevel->scene_tree->node, false);
 
-  /* we also create placeholders; they are rendered as part of a toplevel when
-   * it cannot fit its box. e.g. while animating from a larger size to a smaller size */
-  toplevel->placeholders[0] = wlr_scene_rect_create(toplevel->scene_tree, 0, 0,
-                                                    server.config->placeholder_color);
-  toplevel->placeholders[1] = wlr_scene_rect_create(toplevel->scene_tree, 0, 0,
-                                                    server.config->placeholder_color);
-  wlr_scene_node_lower_to_bottom(&toplevel->placeholders[0]->node);
-  wlr_scene_node_lower_to_bottom(&toplevel->placeholders[1]->node);
-
   /* we are keeping toplevels scene_tree in this free user data field, it is used in 
    * assigning parents to popups */
   toplevel->xdg_toplevel->base->data = toplevel->scene_tree;
@@ -863,7 +854,7 @@ toplevel_find_closest_floating_on_workspace(struct owl_toplevel *toplevel,
   switch(direction) {
     case OWL_UP: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
-        if(t == toplevel || X(t) > Y(toplevel)) continue;
+        if(t == toplevel || Y(t) > Y(toplevel)) continue;
 
         uint32_t dy = abs((int)Y(toplevel) - Y(t));
         if(dy < min_val) {
@@ -936,11 +927,11 @@ toplevel_get_primary_output(struct owl_toplevel *toplevel) {
 void
 toplevel_get_actual_size(struct owl_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width = toplevel->animation.running
-    ? toplevel->animation.current.width
+    ? min(toplevel->animation.current.width, toplevel->current.width)
     : toplevel->current.width;
 
   *height = toplevel->animation.running
-    ? toplevel->animation.current.height
+    ? min(toplevel->animation.current.height, toplevel->current.height)
     : toplevel->current.height;
 }
 
