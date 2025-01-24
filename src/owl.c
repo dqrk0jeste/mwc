@@ -44,6 +44,7 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_session_lock_v1.h>
+#include <wlr/types/wlr_cursor_shape_v1.h>
 
 /* we initialize an instance of our global state */
 struct owl_server server;
@@ -79,6 +80,11 @@ server_handle_new_input(struct wl_listener *listener, void *data) {
   }
 
   wlr_seat_set_capabilities(server.seat, caps);
+}
+
+void
+server_handle_request_cursor_shape(struct wl_listener *listener, void *data) {
+  
 }
 
 void 
@@ -342,6 +348,8 @@ main(int argc, char *argv[]) {
   server.lock_manager_destroy.notify = session_lock_manager_handle_destroy;
   wl_signal_add(&server.session_lock_manager->events.new_lock, &server.new_lock);
   wl_signal_add(&server.session_lock_manager->events.destroy, &server.lock_manager_destroy);
+
+  wlr_cursor_shape_manager_v1_create(server.wl_display, 4);
 
   /* Add a Unix socket to the Wayland display. */
   const char *socket = wl_display_add_socket_auto(server.wl_display);

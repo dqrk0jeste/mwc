@@ -26,15 +26,19 @@ build/protocols/xdg-shell-protocol.h: build/protocols
 	$(WAYLAND_SCANNER) server-header \
 		$(WAYLAND_PROTOCOLS)/stable/xdg-shell/xdg-shell.xml $@
 
-build/protocols/wlr-layer-shell-unstable-v1-protocol.h: build/protocols
+build/protocols/wlr-layer-shell-unstable-v1-protocol.h: build/protocols protocols/wlr-layer-shell-unstable-v1.xml
 	$(WAYLAND_SCANNER) server-header \
 		./protocols/wlr-layer-shell-unstable-v1.xml $@
+
+build/protocols/cursor-shape-v1-protocol.h: build/protocols protocols/cursor-shape-v1.xml
+	$(WAYLAND_SCANNER) server-header \
+		./protocols/cursor-shape-v1.xml $@
 
 build/protocols/xdg-output-unstable-v1-protocol.h: build/protocols
 	$(WAYLAND_SCANNER) server-header \
 		$(WAYLAND_PROTOCOLS)/unstable/xdg-output/xdg-output-unstable-v1.xml $@
 
-build/%.o: src/%.c src/%.h build build/protocols/xdg-shell-protocol.h build/protocols/wlr-layer-shell-unstable-v1-protocol.h build/protocols/xdg-output-unstable-v1-protocol.h
+build/%.o: src/%.c src/%.h build build/protocols/xdg-shell-protocol.h build/protocols/wlr-layer-shell-unstable-v1-protocol.h build/protocols/xdg-output-unstable-v1-protocol.h build/protocols/cursor-shape-v1-protocol.h
 	$(CC) -c $< $(CFLAGS) -DWLR_USE_UNSTABLE -o $@
 
 build/owl: $(OBJ_FILES)
