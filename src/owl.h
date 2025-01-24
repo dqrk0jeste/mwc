@@ -28,7 +28,6 @@ struct owl_server {
 	struct wlr_scene_output_layout *scene_layout;
 
 	struct wlr_scene_tree *background_tree;
-  struct wlr_scene_optimized_blur *blur_tree;
 	struct wlr_scene_tree *bottom_tree;
 	struct wlr_scene_tree *floating_tree;
 	struct wlr_scene_tree *tiled_tree;

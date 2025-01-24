@@ -29,38 +29,21 @@ toplevel_draw_borders(struct owl_toplevel *toplevel) {
 
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
+  width = min(width, toplevel->current.width);
+  height = min(height, toplevel->current.height);
   
-  if(toplevel->borders[0] == NULL) {
-    toplevel->borders[0] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 width + 2 * border_width,
-                                                 border_width, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[0]->node, -border_width, -border_width);
-
-    toplevel->borders[1] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 border_width, height, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[1]->node, width, 0);
-
-    toplevel->borders[2] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 width + 2 * border_width,
-                                                 border_width, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[2]->node, -border_width, height);
-
-    toplevel->borders[3] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 border_width, height, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[3]->node, -border_width, 0);
+  if(toplevel->borders == NULL) {
+    toplevel->borders = wlr_scene_rect_create(toplevel->scene_tree, width + 2 * border_width,
+                                              height + 2 * border_width, border_color);
+    wlr_scene_node_set_position(&toplevel->borders->node, -border_width, -border_width);
+    wlr_scene_rect_set_corner_radius(toplevel->borders, 16, CORNER_LOCATION_ALL);
+    wlr_scene_node_lower_to_bottom(&toplevel->borders->node);
   } else {
-    wlr_scene_node_set_position(&toplevel->borders[1]->node, width, 0);
-    wlr_scene_node_set_position(&toplevel->borders[2]->node, -border_width, height);
-
-    wlr_scene_rect_set_size(toplevel->borders[0], width + 2 * border_width, border_width);
-    wlr_scene_rect_set_size(toplevel->borders[1], border_width, height);
-    wlr_scene_rect_set_size(toplevel->borders[2], width + 2 * border_width, border_width);
-    wlr_scene_rect_set_size(toplevel->borders[3], border_width, height);
+    wlr_scene_rect_set_size(toplevel->borders, width + 2 * border_width,
+                            height + 2 * border_width);
   }
 
-  for(size_t i = 0; i < 4; i++) {
-    wlr_scene_rect_set_color(toplevel->borders[i], border_color);
-  }
+  wlr_scene_rect_set_color(toplevel->borders, border_color);
 }
 
 void
@@ -185,7 +168,7 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
   }
 
   toplevel_draw_borders(toplevel);
-  toplevel_draw_placeholder(toplevel);
+  /*toplevel_draw_placeholder(toplevel);*/
   toplevel_apply_clip(toplevel);
 
   return need_more_frames;
@@ -232,9 +215,11 @@ scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
 
   wlr_scene_buffer_set_corner_radius(buffer, 16, CORNER_LOCATION_ALL);
 
-  wlr_scene_buffer_set_backdrop_blur(buffer, true);
-  wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
-  wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
+  if(true) {
+    wlr_scene_buffer_set_backdrop_blur(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
+  }
 }
 
 void

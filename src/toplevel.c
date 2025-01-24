@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "toplevel.h"
 
 #include "config.h"
@@ -175,6 +177,9 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
                                                     server.config->placeholder_color);
   toplevel->placeholders[1] = wlr_scene_rect_create(toplevel->scene_tree, 0, 0,
                                                     server.config->placeholder_color);
+  wlr_scene_rect_set_corner_radius(toplevel->placeholders[0], 16, CORNER_LOCATION_TOP_RIGHT);
+  wlr_scene_rect_set_corner_radius(toplevel->placeholders[1], 16, CORNER_LOCATION_BOTTOM_RIGHT);
+
   wlr_scene_node_lower_to_bottom(&toplevel->placeholders[0]->node);
   wlr_scene_node_lower_to_bottom(&toplevel->placeholders[1]->node);
 
@@ -828,15 +833,12 @@ focus_toplevel(struct owl_toplevel *toplevel) {
     wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
   }
 
-  wlr_log(WLR_ERROR, "title: %s", toplevel->xdg_toplevel->title);
 	wlr_xdg_toplevel_set_activated(toplevel->xdg_toplevel, true);
-  wlr_log(WLR_ERROR, "title: %s set activated", toplevel->xdg_toplevel->title);
   wlr_scene_node_raise_to_top(&toplevel->scene_tree->node);
 
   struct wlr_seat *seat = server.seat;
   struct wlr_keyboard *keyboard = wlr_seat_get_keyboard(seat);
   if(keyboard != NULL) {
-    wlr_log(WLR_ERROR, "keyboard");
     wlr_seat_keyboard_notify_enter(seat, toplevel->xdg_toplevel->base->surface,
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);
@@ -863,7 +865,7 @@ toplevel_find_closest_floating_on_workspace(struct owl_toplevel *toplevel,
   switch(direction) {
     case OWL_UP: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
-        if(t == toplevel || X(t) > Y(toplevel)) continue;
+        if(t == toplevel || Y(t) > Y(toplevel)) continue;
 
         uint32_t dy = abs((int)Y(toplevel) - Y(t));
         if(dy < min_val) {

@@ -116,7 +116,7 @@ server_handle_new_output(struct wl_listener *listener, void *data) {
     struct owl_workspace *w;
     wl_list_for_each(w, &output->workspaces, link) {
       layout_set_pending_state(w);
-      /* this pathces some ghosts that might have been left in the scene */
+      /* this patches some ghosts that might have been left in the scene */
       if(w != output->active_workspace) {
         struct owl_toplevel *t;
         wl_list_for_each(t, &w->floating_toplevels, link) {
@@ -132,8 +132,14 @@ server_handle_new_output(struct wl_listener *listener, void *data) {
     }
   }
 
-  wlr_scene_optimized_blur_set_size(server.blur_tree,
-			output->wlr_output->width, output->wlr_output->height);
+  if(true) {
+	  output->blur = wlr_scene_optimized_blur_create(&server.scene->tree,
+                                                   wlr_output->width, wlr_output->height);
+    struct blur_data blur_data = blur_data_get_default();
+    wlr_scene_set_blur_data(server.scene, blur_data);
+    wlr_scene_node_place_above(&output->blur->node, &server.background_tree->node);
+    wlr_scene_node_set_position(&output->blur->node, output_box.x, output_box.y);
+  }
 
   /* if first output then set server's active workspace to this one */
   if(server.active_workspace == NULL) {

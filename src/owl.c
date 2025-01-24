@@ -229,7 +229,6 @@ main(int argc, char *argv[]) {
 
   /* create all the scenes in the correct order */
   server.background_tree = wlr_scene_tree_create(&server.scene->tree);
-	server.blur_tree = wlr_scene_optimized_blur_create(&server.scene->tree, 0, 0);
   server.bottom_tree = wlr_scene_tree_create(&server.scene->tree);
   server.tiled_tree = wlr_scene_tree_create(&server.scene->tree);
   server.floating_tree = wlr_scene_tree_create(&server.scene->tree);
@@ -238,8 +237,6 @@ main(int argc, char *argv[]) {
   server.overlay_tree = wlr_scene_tree_create(&server.scene->tree);
   server.session_lock_tree = wlr_scene_tree_create(&server.scene->tree);
 
-  struct blur_data blur_data = blur_data_get_default();
-	wlr_scene_set_blur_data(server.scene, blur_data);
   /* set up xdg-shell version 6 */
   server.xdg_shell = wlr_xdg_shell_create(server.wl_display, 6);
   server.new_xdg_toplevel.notify = server_handle_new_toplevel;
