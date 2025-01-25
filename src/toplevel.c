@@ -623,6 +623,15 @@ toplevel_set_pending_state(struct owl_toplevel *toplevel, uint32_t x, uint32_t y
   } else {
     toplevel->animation.should_animate = true;
     toplevel->animation.initial = toplevel->current;
+    /* we change the new buffer for the old one and animate the transition */
+    if(toplevel->pending.width < toplevel->current.width
+       || toplevel->pending.height < toplevel->current.height) {
+      if(toplevel->animation.snapshot != NULL) {
+        wlr_scene_node_destroy(&toplevel->animation.snapshot->node);
+      }
+      toplevel->animation.snapshot = wlr_scene_tree_snapshot(&toplevel->scene_tree->node,
+                                                             toplevel->scene_tree->node.parent);
+    }
   }
 
   if(toplevel->current.width == toplevel->pending.width
@@ -924,11 +933,11 @@ toplevel_get_primary_output(struct owl_toplevel *toplevel) {
 void
 toplevel_get_actual_size(struct owl_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width = toplevel->animation.running
-    ? min(toplevel->animation.current.width, toplevel->current.width)
+    ? toplevel->animation.current.width
     : toplevel->current.width;
 
   *height = toplevel->animation.running
-    ? min(toplevel->animation.current.height, toplevel->current.height)
+    ? toplevel->animation.current.height
     : toplevel->current.height;
 }
 

@@ -15,6 +15,7 @@ struct owl_animation {
   bool running;
   uint32_t total_frames;
   uint32_t passed_frames;
+  struct wlr_scene_tree *snapshot;
   struct wlr_box initial;
   struct wlr_box current;
 };
@@ -37,6 +38,9 @@ calculate_animation_passed(struct owl_animation *animation);
 bool
 toplevel_animation_next_tick(struct owl_toplevel *toplevel);
 
+struct wlr_scene_tree *
+wlr_scene_tree_snapshot(struct wlr_scene_node *node,
+                        struct wlr_scene_tree *parent);
 bool
 toplevel_draw_frame(struct owl_toplevel *toplevel);
 

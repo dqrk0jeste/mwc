@@ -74,14 +74,25 @@ toplevel_apply_clip(struct owl_toplevel *toplevel) {
   };
 
   wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, &clip_box);
+  if(toplevel->animation.snapshot != NULL) {
+    wlr_scene_subsurface_tree_set_clip(&toplevel->animation.snapshot->node, &clip_box);
+  }
 
   struct wlr_scene_node *n;
   wl_list_for_each(n, &toplevel->scene_tree->children, link) {
-    struct owl_something *view = n->data;
-    if(view != NULL && view->type == OWL_POPUP) {
-      wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, NULL);
+    struct owl_something *something = n->data;
+    if(something != NULL && something->type == OWL_POPUP) {
+      wlr_scene_subsurface_tree_set_clip(n, NULL);
     }
   }
+  /*if(toplevel->animation.snapshot != NULL) {*/
+  /*  wl_list_for_each(n, &toplevel->animation.snapshot->children, link) {*/
+  /*    struct owl_something *view = n->data;*/
+  /*    if(view != NULL && view->type == OWL_POPUP) {*/
+  /*      wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, NULL);*/
+  /*    }*/
+  /*  }*/
+  /*}*/
 }
 
 double
@@ -134,11 +145,122 @@ toplevel_animation_next_tick(struct owl_toplevel *toplevel) {
 
   if(animation_passed == 1.0) {
     toplevel->animation.running = false;
+    wlr_scene_node_destroy(&toplevel->animation.snapshot->node);
+    toplevel->animation.snapshot = NULL;
     return false;
   } else {
     toplevel->animation.passed_frames++;
     return true;
   }
+}
+
+void
+scene_node_snapshot(struct wlr_scene_node *node, int lx, int ly,
+                    struct wlr_scene_tree *snapshot_tree) {
+  if(!node->enabled && node->type != WLR_SCENE_NODE_TREE) {
+    return;
+  }
+
+  lx += node->x;
+  ly += node->y;
+
+  struct wlr_scene_node *snapshot_node = NULL;
+
+  switch(node->type) {
+    case WLR_SCENE_NODE_TREE:;
+      struct wlr_scene_tree *scene_tree = wlr_scene_tree_from_node(node);
+
+      struct wlr_scene_node *child;
+      wl_list_for_each(child, &scene_tree->children, link) {
+        scene_node_snapshot(child, lx, ly, snapshot_tree);
+      }
+      break;
+    case WLR_SCENE_NODE_BUFFER:;
+      struct wlr_scene_buffer *scene_buffer =
+        wlr_scene_buffer_from_node(node);
+
+      struct wlr_scene_buffer *snapshot_buffer =
+        wlr_scene_buffer_create(snapshot_tree, NULL);
+
+      snapshot_node = &snapshot_buffer->node;
+      snapshot_buffer->node.data = scene_buffer->node.data;
+
+      wlr_scene_buffer_set_dest_size(snapshot_buffer, scene_buffer->dst_width,
+                                     scene_buffer->dst_height);
+      wlr_scene_buffer_set_opaque_region(snapshot_buffer,
+                                         &scene_buffer->opaque_region);
+      wlr_scene_buffer_set_source_box(snapshot_buffer,
+                                      &scene_buffer->src_box);
+      wlr_scene_buffer_set_transform(snapshot_buffer,
+                                     scene_buffer->transform);
+      wlr_scene_buffer_set_filter_mode(snapshot_buffer,
+                                       scene_buffer->filter_mode);
+
+      // Effects
+      wlr_scene_buffer_set_opacity(snapshot_buffer, scene_buffer->opacity);
+      /*wlr_scene_buffer_set_corner_radius(snapshot_buffer,*/
+      /*								   scene_buffer->corner_radius,*/
+      /*								   scene_buffer->corners);*/
+
+      /*wlr_scene_buffer_set_backdrop_blur_optimized(*/
+      /*	snapshot_buffer, scene_buffer->backdrop_blur_optimized);*/
+      /*wlr_scene_buffer_set_backdrop_blur_ignore_transparent(*/
+      /*	snapshot_buffer, scene_buffer->backdrop_blur_ignore_transparent);*/
+      /*wlr_scene_buffer_set_backdrop_blur(snapshot_buffer,*/
+      /*								   scene_buffer->backdrop_blur);*/
+
+      snapshot_buffer->node.data = scene_buffer->node.data;
+
+      struct wlr_scene_surface *scene_surface =
+        wlr_scene_surface_try_from_buffer(scene_buffer);
+      if(scene_surface != NULL && scene_surface->surface->buffer != NULL) {
+        wlr_scene_buffer_set_buffer(snapshot_buffer,
+                                    &scene_surface->surface->buffer->base);
+      } else {
+        wlr_scene_buffer_set_buffer(snapshot_buffer, scene_buffer->buffer);
+      }
+      break;
+
+    case WLR_SCENE_NODE_RECT:;
+      break;
+    /*case WLR_SCENE_NODE_OPTIMIZED_BLUR:*/
+    /*	break;*/
+    /**/
+    /*case WLR_SCENE_NODE_SHADOW:;*/
+    /*	struct wlr_scene_shadow *scene_shadow =*/
+    /*		wlr_scene_shadow_from_node(node);*/
+    /**/
+    /*	struct wlr_scene_shadow *snapshot_shadow = wlr_scene_shadow_create(*/
+    /*		snapshot_tree, scene_shadow->width, scene_shadow->height,*/
+    /*		scene_shadow->corner_radius, scene_shadow->blur_sigma,*/
+    /*		scene_shadow->color);*/
+    /*	if (snapshot_shadow == NULL) {*/
+    /*		return false;*/
+    /*	}*/
+    /*	snapshot_node = &snapshot_shadow->node;*/
+    /**/
+    /*	snapshot_shadow->node.data = scene_shadow->node.data;*/
+    /**/
+    /*	break;*/
+  }
+
+  if(snapshot_node != NULL) {
+    wlr_scene_node_set_position(snapshot_node, lx, ly);
+  }
+}
+
+struct wlr_scene_tree *
+wlr_scene_tree_snapshot(struct wlr_scene_node *node,
+                         struct wlr_scene_tree *parent) {
+  struct wlr_scene_tree *snapshot = wlr_scene_tree_create(parent);
+
+  /* Disable and enable the snapshot tree like so to atomically update */
+  /* the scene-graph. This will prevent over-damaging or other weirdness. */
+  wlr_scene_node_set_enabled(&snapshot->node, false);
+  scene_node_snapshot(node, 0, 0, snapshot);
+  wlr_scene_node_set_enabled(&snapshot->node, true);
+
+  return snapshot;
 }
 
 bool
@@ -158,6 +280,7 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
 
   toplevel_draw_borders(toplevel);
   toplevel_apply_clip(toplevel);
+  toplevel_handle_opacity(toplevel);
 
   return need_more_frames;
 }
