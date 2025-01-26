@@ -61,6 +61,23 @@ toplevel_draw_borders(struct owl_toplevel *toplevel) {
 }
 
 void
+iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
+                           int sx, int sy, void *data) {
+  wlr_scene_buffer_set_opacity(buffer, *(double *)data);
+}
+
+void
+toplevel_buffer_apply_effects(struct owl_toplevel *toplevel) {
+  double opacity = toplevel->fullscreen
+    ? 1.0
+    : toplevel == server.focused_toplevel
+      ? toplevel->active_opacity
+      : toplevel->inactive_opacity;
+
+  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node, iter_scene_buffer_apply_effects, &opacity);
+}
+
+void
 toplevel_apply_clip(struct owl_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
@@ -79,7 +96,7 @@ toplevel_apply_clip(struct owl_toplevel *toplevel) {
   wl_list_for_each(n, &toplevel->scene_tree->children, link) {
     struct owl_something *view = n->data;
     if(view != NULL && view->type == OWL_POPUP) {
-      wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, NULL);
+      wlr_scene_subsurface_tree_set_clip(n, NULL);
     }
   }
 }
@@ -100,11 +117,6 @@ find_animation_curve_at(double t) {
   }
 
   return server.config->baked_points[up].y;
-}
-
-double
-calculate_animation_passed(struct owl_animation *animation) {
-  return (double)animation->passed_frames / animation->total_frames;
 }
 
 bool
@@ -132,7 +144,7 @@ toplevel_animation_next_tick(struct owl_toplevel *toplevel) {
     .height = height,
   };
 
-  if(animation_passed == 1.0) {
+  if(animation_passed >= 1.0) {
     toplevel->animation.running = false;
     return false;
   } else {
@@ -158,6 +170,7 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
 
   toplevel_draw_borders(toplevel);
   toplevel_apply_clip(toplevel);
+  toplevel_buffer_apply_effects(toplevel);
 
   return need_more_frames;
 }
@@ -193,39 +206,5 @@ workspace_draw_frame(struct owl_workspace *workspace) {
    * for the output, until all the animations are done */
   if(need_more_frames) {
     wlr_output_schedule_frame(workspace->output->wlr_output);
-  }
-}
-
-void
-scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
-                           int sx, int sy, void *data) {
-  wlr_scene_buffer_set_opacity(buffer, *(double *)data);
-}
-
-void
-toplevel_handle_opacity(struct owl_toplevel *toplevel) {
-  double opacity = toplevel->fullscreen
-    ? 1.0
-    : toplevel == server.focused_toplevel
-      ? toplevel->active_opacity
-      : toplevel->inactive_opacity;
-
-  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node, scene_buffer_apply_opacity, &opacity);
-}
-
-void
-workspace_handle_opacity(struct owl_workspace *workspace) {
-  struct owl_toplevel *t;
-  wl_list_for_each(t, &workspace->floating_toplevels, link) {
-    if(!t->mapped) continue;
-    toplevel_handle_opacity(t);
-  }
-  wl_list_for_each(t, &workspace->masters, link) {
-    if(!t->mapped) continue;
-    toplevel_handle_opacity(t);
-  }
-  wl_list_for_each(t, &workspace->slaves, link) {
-    if(!t->mapped) continue;
-    toplevel_handle_opacity(t);
   }
 }
