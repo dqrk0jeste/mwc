@@ -382,7 +382,6 @@ output_handle_frame(struct wl_listener *listener, void *data) {
   struct notwc_workspace *workspace = output->active_workspace;
 
   workspace_draw_frame(workspace);
-  workspace_handle_opacity(workspace);
 
   struct wlr_scene_output *scene_output = wlr_scene_get_scene_output(server.scene,
                                                                      output->wlr_output);
