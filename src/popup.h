@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scenefx/types/wlr_scene.h>
+
 #include "something.h"
 
 #include <wlr/types/wlr_xdg_shell.h>

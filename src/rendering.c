@@ -1,8 +1,12 @@
+#include <scenefx/types/fx/corner_location.h>
+#include <scenefx/types/wlr_scene.h>
+
 #include "rendering.h"
 
 #include "helpers.h"
 #include "notwc.h"
 #include "config.h"
+#include "something.h"
 #include "toplevel.h"
 #include "config.h"
 #include "workspace.h"
@@ -17,6 +21,8 @@ extern struct notwc_server server;
 void
 toplevel_draw_borders(struct notwc_toplevel *toplevel) {
   uint32_t border_width = server.config->border_width;
+  uint32_t border_radius = max(server.config->border_radius, 1);
+  enum corner_location border_radius_location = server.config->border_radius_location;
 
   float *border_color = toplevel->fullscreen
     ? (float[4]){ 0, 0, 0, 0 }
@@ -26,38 +32,85 @@ toplevel_draw_borders(struct notwc_toplevel *toplevel) {
 
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
-  
-  if(toplevel->borders[0] == NULL) {
-    toplevel->borders[0] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 width + 2 * border_width,
-                                                 border_width, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[0]->node, -border_width, -border_width);
 
-    toplevel->borders[1] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 border_width, height, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[1]->node, width, 0);
-
-    toplevel->borders[2] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 width + 2 * border_width,
-                                                 border_width, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[2]->node, -border_width, height);
-
-    toplevel->borders[3] = wlr_scene_rect_create(toplevel->scene_tree,
-                                                 border_width, height, border_color);
-    wlr_scene_node_set_position(&toplevel->borders[3]->node, -border_width, 0);
-  } else {
-    wlr_scene_node_set_position(&toplevel->borders[1]->node, width, 0);
-    wlr_scene_node_set_position(&toplevel->borders[2]->node, -border_width, height);
-
-    wlr_scene_rect_set_size(toplevel->borders[0], width + 2 * border_width, border_width);
-    wlr_scene_rect_set_size(toplevel->borders[1], border_width, height);
-    wlr_scene_rect_set_size(toplevel->borders[2], width + 2 * border_width, border_width);
-    wlr_scene_rect_set_size(toplevel->borders[3], border_width, height);
+  if(toplevel->border == NULL) {
+    toplevel->border = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, border_color);
+    wlr_scene_node_lower_to_bottom(&toplevel->border->node);
+    wlr_scene_node_set_position(&toplevel->border->node, -border_width, -border_width);
   }
 
-  for(size_t i = 0; i < 4; i++) {
-    wlr_scene_rect_set_color(toplevel->borders[i], border_color);
+  wlr_scene_rect_set_size(toplevel->border, width + 2 * border_width,
+                          height + 2 * border_width);
+  wlr_scene_rect_set_corner_radius(toplevel->border, border_radius, border_radius_location);
+
+  struct clipped_region clipped_region = {
+    .area = { 0, 0, width, height },
+    .corner_radius = border_radius,
+    .corners = border_radius_location,
+  };
+  wlr_scene_rect_set_clipped_region(toplevel->border, clipped_region);
+
+  wlr_scene_rect_set_color(toplevel->border, border_color);
+}
+
+struct notwc_something *
+scene_tree_get_something(struct wlr_scene_tree *tree, 
+                         struct wlr_scene_tree *up_to) {
+  struct notwc_something *something = tree->node.data;
+  if(something != NULL) return something;
+
+  if(tree->node.parent == tree) return NULL;
+
+  return scene_tree_get_something(tree->node.parent, up_to);
+}
+
+struct notwc_something *
+scene_buffer_get_something(struct wlr_scene_buffer *buffer,
+                           struct wlr_scene_tree *up_to) {
+  return scene_tree_get_something(buffer->node.parent, up_to);
+}
+
+struct iter_scene_buffer_apply_effects_args {
+  double opacity;
+  struct wlr_scene_tree *toplevel_tree;
+};
+
+/* this is bad, as it climbs up and down the tree a lot, but will do for testing */
+void
+iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
+                           int sx, int sy, void *data) {
+  struct iter_scene_buffer_apply_effects_args *args = data;
+  struct notwc_something *something = scene_buffer_get_something(buffer, args->toplevel_tree);
+  assert(something != NULL);
+
+  wlr_scene_buffer_set_opacity(buffer, args->opacity);
+
+  /* we dont blur or round popups */
+  if(something->type == NOTWC_POPUP) return;
+
+  if(server.config->blur) {
+    wlr_scene_buffer_set_backdrop_blur(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
   }
+
+  if(server.config->border_radius > 0) {
+    wlr_scene_buffer_set_corner_radius(buffer, server.config->border_radius,
+                                       server.config->border_radius_location);
+  }
+}
+
+void
+toplevel_buffer_apply_effects(struct notwc_toplevel *toplevel) {
+  struct iter_scene_buffer_apply_effects_args args = {
+    .opacity = toplevel->fullscreen
+      ? 1.0 : toplevel == server.focused_toplevel
+        ? toplevel->active_opacity
+        : toplevel->inactive_opacity,
+  };
+
+  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
+                                 iter_scene_buffer_apply_effects, &args);
 }
 
 void

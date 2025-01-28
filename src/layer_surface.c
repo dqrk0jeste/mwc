@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "layer_surface.h"
 
 #include "notwc.h"
@@ -70,10 +72,9 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
   struct notwc_output *output = layer_surface->wlr_layer_surface->output->data;
 
   uint32_t committed = layer_surface->wlr_layer_surface->current.committed;
+	enum zwlr_layer_shell_v1_layer layer = layer_surface->wlr_layer_surface->current.layer;
 	if(committed & WLR_LAYER_SURFACE_V1_STATE_LAYER) {
     /* if the layer has been changed we respect it */
-		enum zwlr_layer_shell_v1_layer layer = layer_surface->wlr_layer_surface->current.layer;
-
 		struct wl_list *list = layer_get_list(output, layer);
     wl_list_remove(&layer_surface->link);
     wl_list_insert(list, &layer_surface->link);
@@ -86,6 +87,10 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
   if(layer_surface->wlr_layer_surface->initial_commit || committed) {
 		layer_surfaces_commit(output);
 	}
+
+  if(layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+    wlr_scene_optimized_blur_mark_dirty(server.scene, output->blur, output->wlr_output);
+  }
 }
 
 void

@@ -1,4 +1,6 @@
 #pragma once
+#include <scenefx/types/fx/blur_data.h>
+#include <scenefx/types/fx/corner_location.h>
 
 #include "helpers.h"
 
@@ -115,6 +117,13 @@ struct notwc_config {
   uint32_t border_width;
   uint32_t outer_gaps;
   uint32_t inner_gaps;
+
+  /* eye-candy */
+  uint32_t border_radius;
+  enum corner_location border_radius_location;
+  bool blur;
+  struct blur_data blur_params;
+
   uint32_t master_count;
   double master_ratio;
   bool client_side_decorations;

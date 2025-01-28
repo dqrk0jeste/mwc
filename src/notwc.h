@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scenefx/types/wlr_scene.h>
+
 #include "keyboard.h"
 #include "pointer.h"
 #include "session_lock.h"

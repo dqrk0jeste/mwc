@@ -15,7 +15,7 @@ struct notwc_toplevel {
   struct wlr_xdg_toplevel *xdg_toplevel;
   struct notwc_workspace *workspace;
   struct wlr_scene_tree *scene_tree;
-  struct wlr_scene_rect *borders[4];
+  struct wlr_scene_rect *border;
 
   struct notwc_something something;
 
