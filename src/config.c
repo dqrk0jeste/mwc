@@ -3,8 +3,11 @@
 #include "owl.h"
 
 #include <libinput.h>
+#include <scenefx/types/fx/blur_data.h>
+#include <scenefx/types/fx/corner_location.h>
 #include <stddef.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -568,6 +571,65 @@ config_handle_value(struct owl_config *c, char *keyword, char **args, size_t arg
     if(arg_count < 1) goto invalid;
 
     c->keymap_options = strdup(args[0]);
+  } else if(strcmp(keyword, "border_radius") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    /* we clamp it between 1 and INT_MAX so it works with current scenefx (see #75 on scenefx)*/
+    c->border_radius = clamp(atoi(args[0]), 1, INT_MAX);
+  } else if(strcmp(keyword, "border_radius_location") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    if(strcmp(args[0], "all") == 0) {
+      c->border_radius_location = CORNER_LOCATION_ALL;
+    } else {
+      for(size_t i = 0; i < arg_count; i++) {
+        if(strcmp(args[i], "top") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_TOP;
+        } else if(strcmp(args[i], "bottom") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_BOTTOM;
+        } else if(strcmp(args[i], "right") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_RIGHT;
+        } else if(strcmp(args[i], "left") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_LEFT;
+        } else if(strcmp(args[i], "top_right") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_TOP_RIGHT;
+        } else if(strcmp(args[i], "bottom_right") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_BOTTOM_RIGHT;
+        } else if(strcmp(args[i], "bottom_left") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_BOTTOM_LEFT;
+        } else if(strcmp(args[i], "top_left") == 0) {
+          c->border_radius_location |= CORNER_LOCATION_TOP_LEFT;
+        }
+      }
+    }
+  } else if(strcmp(keyword, "blur") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur = atoi(args[0]);
+  } else if(strcmp(keyword, "blur_passes") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.num_passes = clamp(atoi(args[0]), 1, INT_MAX);
+  } else if(strcmp(keyword, "blur_radius") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.radius = clamp(atoi(args[0]), 0, INT_MAX);
+  } else if(strcmp(keyword, "blur_noise") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.noise = max(atof(args[0]), 0.0);
+  } else if(strcmp(keyword, "blur_brightness") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.brightness = max(atof(args[0]), 0.0);
+  } else if(strcmp(keyword, "blur_contrast") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.contrast = max(atof(args[0]), 0.0);
+  } else if(strcmp(keyword, "blur_saturation") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->blur_params.saturation = max(atof(args[0]), 0.0);
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
@@ -756,16 +818,18 @@ config_set_default_needed_params(struct owl_config *c) {
             "animation_curve not specified. baking default linear");
   }
   if(c->inactive_opacity == 0) {
-    /* here we evenly space toplevels if there is no master_ratio specified */
     c->inactive_opacity = 1.0;
     wlr_log(WLR_INFO,
             "inactive_opacity not specified. using default %lf", c->inactive_opacity);
   }
   if(c->active_opacity == 0) {
-    /* here we evenly space toplevels if there is no master_ratio specified */
     c->active_opacity = 1.0;
     wlr_log(WLR_INFO,
             "active_opacity not specified. using default %lf", c->active_opacity);
+  }
+  if(c->border_radius_location == 0) {
+    c->border_radius_location = CORNER_LOCATION_ALL;
+    wlr_log(WLR_INFO, "border_radius_location not specified. using all");
   }
 }
 

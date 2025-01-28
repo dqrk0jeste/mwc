@@ -1,8 +1,11 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "something.h"
 
 #include "owl.h"
 #include "layer_surface.h"
 #include "session_lock.h"
+#include "wlr/util/log.h"
 
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
@@ -52,8 +55,8 @@ struct owl_something *
 something_at(double lx, double ly, struct wlr_surface **surface,
              double *sx, double *sy) {
   /* this returns the topmost node in the scene at the given layout coords */
-  struct wlr_scene_node *node =
-    wlr_scene_node_at(&server.scene->tree.node, lx, ly, sx, sy);
+  struct wlr_scene_node *node = wlr_scene_node_at(&server.scene->tree.node,
+                                                  lx, ly, sx, sy);
   if(node == NULL || node->type != WLR_SCENE_NODE_BUFFER) {
     return NULL;
   }
@@ -61,7 +64,7 @@ something_at(double lx, double ly, struct wlr_surface **surface,
   struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
   struct wlr_scene_surface *scene_surface =
     wlr_scene_surface_try_from_buffer(scene_buffer);
-  if(!scene_surface) {
+  if(scene_surface == NULL) {
     return NULL;
   }
 

@@ -1,3 +1,4 @@
+-I/usr/include/scenefx-0.1
 -I/usr/include/wlroots-0.18
 -I/usr/include/pixman-1
 -I/usr/include/libdrm
@@ -6,5 +7,5 @@
 
 -DWLR_USE_UNSTABLE
 
+-lscenefx-0.1
 -lwlroots-0.18
-
