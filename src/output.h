@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scenefx/types/wlr_scene.h>
+
 #include <wlr/types/wlr_output.h>
 
 #include "workspace.h"
@@ -17,6 +19,8 @@ struct notwc_output {
     struct wl_list top;
     struct wl_list overlay;
   } layers;
+
+  struct wlr_scene_optimized_blur *blur;
 
   struct notwc_workspace *active_workspace;
 

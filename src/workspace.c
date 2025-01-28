@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "workspace.h"
 
 #include "layout.h"

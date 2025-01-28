@@ -1,3 +1,5 @@
+#include <scenefx/types/wlr_scene.h>
+
 #include "dnd.h"
 
 #include "notwc.h"

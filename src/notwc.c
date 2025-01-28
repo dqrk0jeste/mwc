@@ -1,3 +1,6 @@
+#include <scenefx/render/fx_renderer/fx_renderer.h>
+#include <scenefx/types/wlr_scene.h>
+
 #include "notwc.h"
 
 #include "helpers.h"
@@ -184,7 +187,7 @@ main(int argc, char *argv[]) {
    * can also specify a renderer using the WLR_RENDERER env var.
    * The renderer is responsible for defining the various pixel formats it
    * supports for shared memory, this configures that for clients. */
-  server.renderer = wlr_renderer_autocreate(server.backend);
+  server.renderer = fx_renderer_create(server.backend);
   if(server.renderer == NULL) {
     wlr_log(WLR_ERROR, "failed to create wlr_renderer");
     return 1;

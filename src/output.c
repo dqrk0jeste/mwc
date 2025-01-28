@@ -1,3 +1,4 @@
+#include <scenefx/types/wlr_scene.h>
 #include "output.h"
 
 #include "notwc.h"
@@ -128,6 +129,14 @@ server_handle_new_output(struct wl_listener *listener, void *data) {
         }
       }
     }
+  }
+
+  if(server.config->blur) {
+    output->blur = wlr_scene_optimized_blur_create(&server.scene->tree,
+                                                   wlr_output->width, wlr_output->height);
+    wlr_scene_set_blur_data(server.scene, server.config->blur_params);
+    wlr_scene_node_place_above(&output->blur->node, &server.background_tree->node);
+    wlr_scene_node_set_position(&output->blur->node, output_box.x, output_box.y);
   }
 
   /* if first output then set server's active workspace to this one */
