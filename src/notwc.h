@@ -15,14 +15,14 @@
 
 #define STRING_INITIAL_LENGTH 64
 
-enum owl_direction {
-  OWL_UP,
-  OWL_RIGHT,
-  OWL_DOWN,
-  OWL_LEFT,
+enum notwc_direction {
+  NOTWC_UP,
+  NOTWC_RIGHT,
+  NOTWC_DOWN,
+  NOTWC_LEFT,
 };
 
-struct owl_server {
+struct notwc_server {
 	struct wl_display *wl_display;
 	struct wl_event_loop *wl_event_loop;
   struct wlr_session *session;
@@ -72,12 +72,12 @@ struct owl_server {
   struct wl_listener request_destroy_drag;
 
 	struct wl_list keyboards;
-  struct owl_keyboard *last_used_keyboard;
+  struct notwc_keyboard *last_used_keyboard;
 
-	enum owl_cursor_mode cursor_mode;
+	enum notwc_cursor_mode cursor_mode;
   /* this keeps state when the compositor is in the state of moving or
    * resizing toplevels */
-	struct owl_toplevel *grabbed_toplevel;
+	struct notwc_toplevel *grabbed_toplevel;
 	double grab_x, grab_y;
 	struct wlr_box grabbed_toplevel_initial_box;
 	uint32_t resize_edges;
@@ -90,14 +90,14 @@ struct owl_server {
   } client_cursor;
 
   /* active workspace follows mouse */
-  struct owl_workspace *active_workspace;
+  struct notwc_workspace *active_workspace;
   /* toplevel with keyboard focus */
-  struct owl_toplevel *focused_toplevel;
+  struct notwc_toplevel *focused_toplevel;
   /* keeps track if there is a layer surface that takes keyboard focus */
-  struct owl_layer_surface *focused_layer_surface;
+  struct notwc_layer_surface *focused_layer_surface;
   bool exclusive;
   /* last focused toplevel before layer surface was given focus */
-  struct owl_toplevel *prev_focused;
+  struct notwc_toplevel *prev_focused;
 
 	struct wlr_output_layout *output_layout;
 	struct wl_list outputs;
@@ -114,9 +114,9 @@ struct owl_server {
   struct wlr_session_lock_manager_v1 *session_lock_manager;
   struct wl_listener new_lock;
   struct wl_listener lock_manager_destroy;
-  struct owl_lock *lock;
+  struct notwc_lock *lock;
 
-  struct owl_config *config;
+  struct notwc_config *config;
 
   bool running;
 };

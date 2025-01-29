@@ -14,7 +14,7 @@ LIBS!=$(PKG_CONFIG) --libs $(PKGS)
 SRC_FILES := $(wildcard src/*.c)
 OBJ_FILES := $(patsubst src/%.c, build/%.o, $(SRC_FILES))
 
-all: build/owl build/owl-ipc
+all: build/notwc build/notwc-ipc
 
 build:
 	mkdir -p build
@@ -41,26 +41,26 @@ build/protocols/xdg-output-unstable-v1-protocol.h: build/protocols
 build/%.o: src/%.c src/%.h build build/protocols/xdg-shell-protocol.h build/protocols/wlr-layer-shell-unstable-v1-protocol.h build/protocols/xdg-output-unstable-v1-protocol.h build/protocols/cursor-shape-v1-protocol.h
 	$(CC) -c $< $(CFLAGS) -DWLR_USE_UNSTABLE -o $@
 
-build/owl: $(OBJ_FILES)
+build/notwc: $(OBJ_FILES)
 	$(CC) $^ $> $(CFLAGS) $(LDFLAGS) $(LIBS) -o $@
 
-build/owl-ipc: owl-ipc/owl-ipc.c
+build/notwc-ipc: notwc-ipc/notwc-ipc.c
 	$(CC) $< -o $@
 
-install: build/owl build/owl-ipc default.conf owl-portals.conf owl.desktop
-	install -Dm755 build/owl "/usr/local/bin/owl"; \
-	install -Dm755 build/owl-ipc "/usr/local/bin/owl-ipc"; \
-	install -Dm644 default.conf "/usr/share/owl/default.conf"; \
-  install -Dm644 LICENSE "/usr/share/licenses/owl/LICENSE"; \
-	install -Dm644 owl.desktop "/usr/share/wayland-sessions/owl.desktop"; \
-	install -Dm644 owl-portals.conf "/usr/share/xdg-desktop-portal/owl-portals.conf"
+install: build/notwc build/notwc-ipc default.conf notwc-portals.conf notwc.desktop
+	install -Dm755 build/notwc "/usr/local/bin/notwc"; \
+	install -Dm755 build/notwc-ipc "/usr/local/bin/notwc-ipc"; \
+	install -Dm644 default.conf "/usr/share/notwc/default.conf"; \
+  install -Dm644 LICENSE "/usr/share/licenses/notwc/LICENSE"; \
+	install -Dm644 notwc.desktop "/usr/share/wayland-sessions/notwc.desktop"; \
+	install -Dm644 notwc-portals.conf "/usr/share/xdg-desktop-portal/notwc-portals.conf"
 
 uninstall:
-	rm /usr/local/bin/owl; \
-	rm /usr/local/bin/owl-ipc; \
-	rm -rf /usr/share/owl; \
-	rm /usr/share/xdg-desktop-portal/owl-portals.conf; \
-	rm /usr/share/wayland-sessions/owl.desktop
+	rm /usr/local/bin/notwc; \
+	rm /usr/local/bin/notwc-ipc; \
+	rm -rf /usr/share/notwc; \
+	rm /usr/share/xdg-desktop-portal/notwc-portals.conf; \
+	rm /usr/share/wayland-sessions/notwc.desktop
 
 clean:
 	rm -rf build 2>/dev/null

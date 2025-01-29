@@ -1,5 +1,5 @@
 /* although you can create your own ipc client implementation,
- * you are highly advised to use this one (installed globally as `owl-ipc`)
+ * you are highly advised to use this one (installed globally as `notwc-ipc`)
  * to get ipc messages from the server. see examples/active-workspace.sh */
 #include <assert.h>
 #include <signal.h>
@@ -15,7 +15,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#define OWL_PIPE "/tmp/owl/ipc"
+#define NOTWC_PIPE "/tmp/notwc/ipc"
 #define SEPARATOR "\x1E"
 
 static bool interupted = false;
@@ -27,13 +27,13 @@ static void sigint_handler(int signum) {
 }
 
 void generate_random_name(char *buffer, uint32_t length, uint32_t buffer_size) {
-  assert(buffer_size >= 9 + length + 1);
+  assert(buffer_size >= 11 + length + 1);
 
-  strcpy(buffer, "/tmp/owl/");
+  strcpy(buffer, "/tmp/notwc/");
   for(size_t i = 0; i < length; i++) {
-    buffer[9 + i] = letters[rand() % (sizeof(letters) - 1)];
+    buffer[11 + i] = letters[rand() % (sizeof(letters) - 1)];
   }
-  buffer[9 + length] = 0;
+  buffer[11 + length] = 0;
 }
 
 int main(int argc, char **argv) {
@@ -51,9 +51,9 @@ int main(int argc, char **argv) {
    * at the same time, and caused hours of debugging */
   srand(getpid());
 
-  int owl_fd = open(OWL_PIPE, O_WRONLY);
-  if(owl_fd == -1) {
-    perror("failed to open pipe" OWL_PIPE);
+  int NOTWC_fd = open(NOTWC_PIPE, O_WRONLY);
+  if(NOTWC_fd == -1) {
+    perror("failed to open pipe" NOTWC_PIPE);
     return 1;
   }
 
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   /* terminate the string just in case, but it should not exceed the size */
   message_to_server[sizeof(message_to_server) - 1] = 0;
 
-  if(write(owl_fd, message_to_server, strlen(message_to_server)) == -1) {
+  if(write(NOTWC_fd, message_to_server, strlen(message_to_server)) == -1) {
     perror("failed to write to fifo");
     return 1;
   }
@@ -80,12 +80,12 @@ int main(int argc, char **argv) {
   int fd = open(name, O_RDONLY);
   if(fd == -1) {
     perror("failed to open pipe");
-    close(owl_fd);
+    close(NOTWC_fd);
     goto clean;
   }
 
   /* we wont use the main pipe anymore */
-  close(owl_fd);
+  close(NOTWC_fd);
 
   printf("successfully created a connection over pipe '%s'\n"
          "waiting for events...\n", name);
