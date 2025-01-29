@@ -59,7 +59,7 @@ scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
                            int sx, int sy, void *user_data);
 
 void
-toplevel_handle_opacity(struct notwc_toplevel *toplevel);
+toplevel_buffer_apply_effects(struct notwc_toplevel *toplevel);
 
 void
 workspace_handle_opacity(struct notwc_workspace *workspace);

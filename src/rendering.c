@@ -134,7 +134,7 @@ toplevel_apply_clip(struct notwc_toplevel *toplevel) {
   wl_list_for_each(n, &toplevel->scene_tree->children, link) {
     struct notwc_something *view = n->data;
     if(view != NULL && view->type == NOTWC_POPUP) {
-      wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, NULL);
+      wlr_scene_subsurface_tree_set_clip(n, NULL);
     }
   }
 }
@@ -197,7 +197,7 @@ toplevel_animation_next_tick(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_draw_shadow(struct owl_toplevel *toplevel) {
+toplevel_draw_shadow(struct notwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
