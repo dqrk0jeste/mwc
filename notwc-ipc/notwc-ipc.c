@@ -51,8 +51,8 @@ int main(int argc, char **argv) {
    * at the same time, and caused hours of debugging */
   srand(getpid());
 
-  int NOTWC_fd = open(NOTWC_PIPE, O_WRONLY);
-  if(NOTWC_fd == -1) {
+  int notwc_fd = open(NOTWC_PIPE, O_WRONLY);
+  if(notwc_fd == -1) {
     perror("failed to open pipe" NOTWC_PIPE);
     return 1;
   }
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
   /* terminate the string just in case, but it should not exceed the size */
   message_to_server[sizeof(message_to_server) - 1] = 0;
 
-  if(write(NOTWC_fd, message_to_server, strlen(message_to_server)) == -1) {
+  if(write(notwc_fd, message_to_server, strlen(message_to_server)) == -1) {
     perror("failed to write to fifo");
     return 1;
   }
@@ -80,12 +80,12 @@ int main(int argc, char **argv) {
   int fd = open(name, O_RDONLY);
   if(fd == -1) {
     perror("failed to open pipe");
-    close(NOTWC_fd);
+    close(notwc_fd);
     goto clean;
   }
 
   /* we wont use the main pipe anymore */
-  close(NOTWC_fd);
+  close(notwc_fd);
 
   printf("successfully created a connection over pipe '%s'\n"
          "waiting for events...\n", name);
