@@ -1,7 +1,7 @@
 #include "rendering.h"
 
 #include "helpers.h"
-#include "owl.h"
+#include "notwc.h"
 #include "config.h"
 #include "toplevel.h"
 #include "config.h"
@@ -12,10 +12,10 @@
 #include <assert.h>
 #include <wlr/util/log.h>
 
-extern struct owl_server server;
+extern struct notwc_server server;
 
 void
-toplevel_draw_borders(struct owl_toplevel *toplevel) {
+toplevel_draw_borders(struct notwc_toplevel *toplevel) {
   uint32_t border_width = server.config->border_width;
 
   float *border_color = toplevel->fullscreen
@@ -61,7 +61,7 @@ toplevel_draw_borders(struct owl_toplevel *toplevel) {
 }
 
 void
-toplevel_apply_clip(struct owl_toplevel *toplevel) {
+toplevel_apply_clip(struct notwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
@@ -77,8 +77,8 @@ toplevel_apply_clip(struct owl_toplevel *toplevel) {
 
   struct wlr_scene_node *n;
   wl_list_for_each(n, &toplevel->scene_tree->children, link) {
-    struct owl_something *view = n->data;
-    if(view != NULL && view->type == OWL_POPUP) {
+    struct notwc_something *view = n->data;
+    if(view != NULL && view->type == NOTWC_POPUP) {
       wlr_scene_subsurface_tree_set_clip(&toplevel->scene_tree->node, NULL);
     }
   }
@@ -103,12 +103,12 @@ find_animation_curve_at(double t) {
 }
 
 double
-calculate_animation_passed(struct owl_animation *animation) {
+calculate_animation_passed(struct notwc_animation *animation) {
   return (double)animation->passed_frames / animation->total_frames;
 }
 
 bool
-toplevel_animation_next_tick(struct owl_toplevel *toplevel) {
+toplevel_animation_next_tick(struct notwc_toplevel *toplevel) {
   double animation_passed =
     (double)toplevel->animation.passed_frames / toplevel->animation.total_frames;
   double factor = find_animation_curve_at(animation_passed);
@@ -142,7 +142,7 @@ toplevel_animation_next_tick(struct owl_toplevel *toplevel) {
 }
 
 bool
-toplevel_draw_frame(struct owl_toplevel *toplevel) {
+toplevel_draw_frame(struct notwc_toplevel *toplevel) {
   if(!toplevel->mapped) return false;
   wlr_scene_node_set_enabled(&toplevel->scene_tree->node, true);
 
@@ -163,10 +163,10 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
 }
 
 void
-workspace_draw_frame(struct owl_workspace *workspace) {
+workspace_draw_frame(struct notwc_workspace *workspace) {
   bool need_more_frames = false;
 
-  struct owl_toplevel *t;
+  struct notwc_toplevel *t;
   if(workspace->fullscreen_toplevel != NULL) {
     if(toplevel_draw_frame(workspace->fullscreen_toplevel)) {
       need_more_frames = true;
@@ -203,7 +203,7 @@ scene_buffer_apply_opacity(struct wlr_scene_buffer *buffer,
 }
 
 void
-toplevel_handle_opacity(struct owl_toplevel *toplevel) {
+toplevel_handle_opacity(struct notwc_toplevel *toplevel) {
   double opacity = toplevel->fullscreen
     ? 1.0
     : toplevel == server.focused_toplevel
@@ -214,8 +214,8 @@ toplevel_handle_opacity(struct owl_toplevel *toplevel) {
 }
 
 void
-workspace_handle_opacity(struct owl_workspace *workspace) {
-  struct owl_toplevel *t;
+workspace_handle_opacity(struct notwc_workspace *workspace) {
+  struct notwc_toplevel *t;
   wl_list_for_each(t, &workspace->floating_toplevels, link) {
     if(!t->mapped) continue;
     toplevel_handle_opacity(t);

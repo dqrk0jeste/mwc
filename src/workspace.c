@@ -1,18 +1,18 @@
 #include "workspace.h"
 
 #include "layout.h"
-#include "owl.h"
+#include "notwc.h"
 #include "ipc.h"
 #include "keybinds.h"
 
 #include <assert.h>
 #include <stdlib.h>
 
-extern struct owl_server server;
+extern struct notwc_server server;
 
 void
-workspace_create_for_output(struct owl_output *output, struct workspace_config *config) {
-  struct owl_workspace *workspace = calloc(1, sizeof(*workspace));
+workspace_create_for_output(struct notwc_output *output, struct workspace_config *config) {
+  struct notwc_workspace *workspace = calloc(1, sizeof(*workspace));
 
   wl_list_init(&workspace->floating_toplevels);
   wl_list_init(&workspace->masters);
@@ -46,7 +46,7 @@ workspace_create_for_output(struct owl_output *output, struct workspace_config *
 }
 
 void
-change_workspace(struct owl_workspace *workspace, bool keep_focus) {
+change_workspace(struct notwc_workspace *workspace, bool keep_focus) {
   /* if it is the same as global active workspace, do nothing */
   if(server.active_workspace == workspace) return;
 
@@ -61,10 +61,10 @@ change_workspace(struct owl_workspace *workspace, bool keep_focus) {
     } else if(keep_focus) {
       return;
     } else if(!wl_list_empty(&workspace->masters)) {
-      struct owl_toplevel *t = wl_container_of(workspace->masters.next, t, link);
+      struct notwc_toplevel *t = wl_container_of(workspace->masters.next, t, link);
       focus_toplevel(t);
     } else if(!wl_list_empty(&workspace->floating_toplevels)) {
-      struct owl_toplevel *t = wl_container_of(workspace->floating_toplevels.next, t, link);
+      struct notwc_toplevel *t = wl_container_of(workspace->floating_toplevels.next, t, link);
       focus_toplevel(t);
     } else {
       unfocus_focused_toplevel();
@@ -73,7 +73,7 @@ change_workspace(struct owl_workspace *workspace, bool keep_focus) {
   }
 
   /* else remove all the toplevels on that workspace */
-  struct owl_toplevel *t;
+  struct notwc_toplevel *t;
   wl_list_for_each(t, &workspace->output->active_workspace->floating_toplevels, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
@@ -110,10 +110,10 @@ change_workspace(struct owl_workspace *workspace, bool keep_focus) {
   } else if(keep_focus) {
     return;
   } else if(!wl_list_empty(&workspace->masters)) {
-    struct owl_toplevel *t = wl_container_of(workspace->masters.next, t, link);
+    struct notwc_toplevel *t = wl_container_of(workspace->masters.next, t, link);
     focus_toplevel(t);
   } else if(!wl_list_empty(&workspace->floating_toplevels)) {
-    struct owl_toplevel *t = wl_container_of(workspace->floating_toplevels.next, t, link);
+    struct notwc_toplevel *t = wl_container_of(workspace->floating_toplevels.next, t, link);
     focus_toplevel(t);
   } else {
     unfocus_focused_toplevel();
@@ -121,12 +121,12 @@ change_workspace(struct owl_workspace *workspace, bool keep_focus) {
 }
 
 void
-toplevel_move_to_workspace(struct owl_toplevel *toplevel,
-                           struct owl_workspace *workspace) {
+toplevel_move_to_workspace(struct notwc_toplevel *toplevel,
+                           struct notwc_workspace *workspace) {
   assert(toplevel != NULL && workspace != NULL);
   if(toplevel->workspace == workspace) return;
 
-  struct owl_workspace *old_workspace = toplevel->workspace;
+  struct notwc_workspace *old_workspace = toplevel->workspace;
 
   /* handle server state; note: even tho fullscreen toplevel is handled differently
    * we will still update its underlying type */
@@ -137,7 +137,7 @@ toplevel_move_to_workspace(struct owl_toplevel *toplevel,
   } else if(toplevel_is_master(toplevel)){
     wl_list_remove(&toplevel->link);
     if(!wl_list_empty(&old_workspace->slaves)) {
-      struct owl_toplevel *s = wl_container_of(old_workspace->slaves.next, s, link);
+      struct notwc_toplevel *s = wl_container_of(old_workspace->slaves.next, s, link);
       wl_list_remove(&s->link);
       wl_list_insert(old_workspace->masters.prev, &s->link);
     }

@@ -1,6 +1,6 @@
 #include "ipc.h"
 
-#include "owl.h"
+#include "notwc.h"
 #include "toplevel.h"
 #include "workspace.h"
 
@@ -15,7 +15,7 @@
 
 #define SEPARATOR "\x1E"
 
-extern struct owl_server server;
+extern struct notwc_server server;
 
 /* global state that keeps track of connected clients */
 static struct wl_list clients;
@@ -83,7 +83,7 @@ void *run_ipc(void *args) {
     return NULL;
   }
 
-  wlr_log(WLR_INFO, "starting owl ipc...");
+  wlr_log(WLR_INFO, "starting notwc ipc...");
 
   remove(PIPE_NAME);
   if(mkfifo(PIPE_NAME, 0622) == -1) {

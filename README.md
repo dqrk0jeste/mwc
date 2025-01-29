@@ -1,6 +1,6 @@
 <div align="center">
-<h1>owl</h1>
-<img src="https://github.com/dqrk0jeste/owl/blob/main/assets/owl.gif" width="500"/>
+<h1>notwc</h1>
+<img src="https://github.com/dqrk0jeste/notwc/blob/main/assets/notwc.gif" width="500"/>
 <br>
 </div>
 
@@ -15,7 +15,7 @@
 - easy configuration with custom keybinds, monitor layouts etc
 - portals and an ipc for integrating with other apps
 
-> owl is made mainly for myself, implementing just enough for my workflow. that means a lot of things is just not there. if you are looking for something more mature take a look at hyprland, sway or river. 
+> notwc is made mainly for myself, implementing just enough for my workflow. that means a lot of things is just not there. if you are looking for something more mature take a look at hyprland, sway or river. 
 
 ## showcase
 <div align="center">
@@ -39,23 +39,23 @@
 
 ## building
 ```bash
-git clone https://github.com/dqrk0jeste/owl
-cd owl
+git clone https://github.com/dqrk0jeste/notwc
+cd notwc
 make
 ```
 
 ## installation
 
 ### arch
-`owl` is available in the arch user repository under the name `owl-compositor-git`. you can install it with your favourite aur helper
+`notwc` is available in the arch user repository under the name `notwc-compositor-git`. you can install it with your favourite aur helper
 ```bash
-yay -S owl-compositor-git
+yay -S notwc-compositor-git
 ```
 
 ### nixos (outdated)
-you can install `owl` by using [chaotic-cx/nyx](https://github.com/chaotic-cx/nyx) flake! 
+you can install `notwc` by using [chaotic-cx/nyx](https://github.com/chaotic-cx/nyx) flake! 
 
-for now `owl` exist only as `owl-wlr_git` package, just add it into your nixos / home-manager configuration and follow **usage** and **configuration** parts of `README.md`!
+for now `notwc` exist only as `notwc-wlr_git` package, just add it into your nixos / home-manager configuration and follow **usage** and **configuration** parts of `README.md`!
 
 ### other linux distributions
 ```bash
@@ -63,23 +63,23 @@ make install
 ```
 note: you will need sudo privileges to do so
 
-> if you wish to uninstall `owl` you can do so with `make unistall`.
+> if you wish to uninstall `notwc` you can do so with `make unistall`.
 
 ## post install
-if you need to interact with sandboxed applications and/or screenshare you will need xdg-desktop-portals. by default `owl` needs
+if you need to interact with sandboxed applications and/or screenshare you will need xdg-desktop-portals. by default `notwc` needs
 - xdg-desktop-portal (base)
 - xdg-desktop-portal-wlr (for screensharing)
 - xdg-desktop-portal-gtk (for everything else)
 
 ## usage
 ```bash
-owl
+notwc
 ```
 
 > you probably want to run it from a tty
 
 ## configuration
-configuration is done in a configuration file found at `$XDG_CONFIG_HOME/owl/owl.conf` or `$HOME/.config/owl/owl.conf`. if no config is found a default config will be used (you need `owl` installed, see above).
+configuration is done in a configuration file found at `$XDG_CONFIG_HOME/notwc/notwc.conf` or `$HOME/.config/notwc/notwc.conf`. if no config is found a default config will be used (you need `notwc` installed, see above).
 
 for detailed documentation see `examples/example.conf`. you can also find the default config in the repo.
 

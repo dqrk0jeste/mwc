@@ -18,7 +18,7 @@ struct keybind {
 };
 
 bool
-server_handle_keybinds(struct owl_keyboard *keyboard,
+server_handle_keybinds(struct notwc_keyboard *keyboard,
                        uint32_t keycode,
                        enum wl_keyboard_key_state state);
 

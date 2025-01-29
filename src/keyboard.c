@@ -1,7 +1,7 @@
 #include "keyboard.h"
 
 #include "keybinds.h"
-#include "owl.h"
+#include "notwc.h"
 #include "config.h"
 
 #include <stdlib.h>
@@ -10,13 +10,13 @@
 #include <libinput.h>
 #include <xkbcommon/xkbcommon.h>
 
-extern struct owl_server server;
+extern struct notwc_server server;
 
 void
 keyboard_handle_modifiers(struct wl_listener *listener, void *data) {
   /* This event is raised when a modifier key, such as shift or alt, is
    * pressed. We simply communicate this to the client. */
-  struct owl_keyboard *keyboard = wl_container_of(listener, keyboard, modifiers);
+  struct notwc_keyboard *keyboard = wl_container_of(listener, keyboard, modifiers);
 
   server.last_used_keyboard = keyboard;
   /*
@@ -32,7 +32,7 @@ keyboard_handle_modifiers(struct wl_listener *listener, void *data) {
 
 void
 keyboard_handle_key(struct wl_listener *listener, void *data) {
-  struct owl_keyboard *keyboard = wl_container_of(listener, keyboard, key);
+  struct notwc_keyboard *keyboard = wl_container_of(listener, keyboard, key);
   struct wlr_keyboard_key_event *event = data;
 
   server.last_used_keyboard = keyboard;
@@ -56,7 +56,7 @@ keyboard_handle_key(struct wl_listener *listener, void *data) {
 
 void
 keyboard_handle_destroy(struct wl_listener *listener, void *data) {
-  struct owl_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
+  struct notwc_keyboard *keyboard = wl_container_of(listener, keyboard, destroy);
 
   if(server.last_used_keyboard == keyboard) {
     server.last_used_keyboard = NULL;
@@ -75,7 +75,7 @@ void
 server_handle_new_keyboard(struct wlr_input_device *device) {
   struct wlr_keyboard *wlr_keyboard = wlr_keyboard_from_input_device(device);
 
-  struct owl_keyboard *keyboard = calloc(1, sizeof(*keyboard));
+  struct notwc_keyboard *keyboard = calloc(1, sizeof(*keyboard));
   keyboard->wlr_keyboard = wlr_keyboard;
 
   struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);

@@ -2,7 +2,7 @@
 
 #include <wlr/types/wlr_keyboard.h>
 
-struct owl_keyboard {
+struct notwc_keyboard {
 	struct wl_list link;
 	struct wlr_keyboard *wlr_keyboard;
   /* used for getting raw keysyms for keybinds */

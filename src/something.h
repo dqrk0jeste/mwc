@@ -2,31 +2,31 @@
 
 #include <wlr/types/wlr_compositor.h>
 
-enum owl_type {
-  OWL_TOPLEVEL,
-  OWL_POPUP,
-  OWL_LAYER_SURFACE,
-  OWL_LOCK_SURFACE,
+enum notwc_type {
+  NOTWC_TOPLEVEL,
+  NOTWC_POPUP,
+  NOTWC_LAYER_SURFACE,
+  NOTWC_LOCK_SURFACE,
 };
 
-struct owl_toplevel;
-struct owl_layer_surface;
-struct owl_lock_surface;
+struct notwc_toplevel;
+struct notwc_layer_surface;
+struct notwc_lock_surface;
 
-struct owl_something {
-  enum owl_type type;
+struct notwc_something {
+  enum notwc_type type;
   union {
-    struct owl_toplevel *toplevel;
-    struct owl_popup *popup;
-    struct owl_layer_surface *layer_surface;
-    struct owl_lock_surface *lock_surface;
+    struct notwc_toplevel *toplevel;
+    struct notwc_popup *popup;
+    struct notwc_layer_surface *layer_surface;
+    struct notwc_lock_surface *lock_surface;
   };
 };
 
-struct owl_something *
+struct notwc_something *
 root_parent_of_surface(struct wlr_surface *wlr_surface);
 
-struct owl_something *
+struct notwc_something *
 something_at(double lx, double ly,
              struct wlr_surface **surface,
              double *sx, double *sy);

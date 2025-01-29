@@ -1,6 +1,6 @@
 #include "config.h"
 #include "keybinds.h"
-#include "owl.h"
+#include "notwc.h"
 
 #include <libinput.h>
 #include <stddef.h>
@@ -14,7 +14,7 @@
 #define clamp(v, a, b) (max((a), min((v), (b))))
 
 struct vec2
-calculate_animation_curve_at(struct owl_config *c, double t) {
+calculate_animation_curve_at(struct notwc_config *c, double t) {
   struct vec2 point;
 
   point.x = 3 * t * (1 - t) * (1 - t) * c->animation_curve[0]
@@ -29,7 +29,7 @@ calculate_animation_curve_at(struct owl_config *c, double t) {
 }
 
 /* thanks vaxry */
-void bake_bezier_curve_points(struct owl_config *c) {
+void bake_bezier_curve_points(struct notwc_config *c) {
   c->baked_points = calloc(BAKED_POINTS_COUNT, sizeof(*c->baked_points));
 
   for(size_t i = 0; i < BAKED_POINTS_COUNT; i++) {
@@ -38,7 +38,7 @@ void bake_bezier_curve_points(struct owl_config *c) {
 }
 
 bool
-config_add_window_rule(struct owl_config *c, char *app_id_regex, char *title_regex,
+config_add_window_rule(struct notwc_config *c, char *app_id_regex, char *title_regex,
                        char *predicate, char **args, size_t arg_count) {
   struct window_rule_regex condition;
   if(strcmp(app_id_regex, "_") == 0) {
@@ -139,7 +139,7 @@ string_append_with_comma(char *a, char *b, size_t *cap, bool comma) {
 }
 
 void
-config_add_keymap(struct owl_config *c, char *layout, char *variant) {
+config_add_keymap(struct notwc_config *c, char *layout, char *variant) {
   /* everything here is ugly */
   static size_t layout_cap, variant_cap;
   static size_t count;
@@ -159,7 +159,7 @@ config_add_keymap(struct owl_config *c, char *layout, char *variant) {
 }
 
 bool
-config_add_keybind(struct owl_config *c, char *modifiers, char *key,
+config_add_keybind(struct notwc_config *c, char *modifiers, char *key,
                    char* action, char **args, size_t arg_count) {
   char *p = modifiers;
   uint32_t modifiers_flag = 0;
@@ -280,15 +280,15 @@ config_add_keybind(struct owl_config *c, char *modifiers, char *key,
       return false;
     }
 
-    enum owl_direction direction;
+    enum notwc_direction direction;
     if(strcmp(args[0], "up") == 0) {
-      direction = OWL_UP;
+      direction = NOTWC_UP;
     } else if(strcmp(args[0], "left") == 0) {
-      direction = OWL_LEFT;
+      direction = NOTWC_LEFT;
     } else if(strcmp(args[0], "down") == 0) {
-      direction = OWL_DOWN;
+      direction = NOTWC_DOWN;
     } else if(strcmp(args[0], "right") == 0) {
-      direction = OWL_RIGHT;
+      direction = NOTWC_RIGHT;
     } else {
       wlr_log(WLR_ERROR, "invalid args to %s", action);
       free(k);
@@ -304,15 +304,15 @@ config_add_keybind(struct owl_config *c, char *modifiers, char *key,
       return false;
     }
 
-    enum owl_direction direction;
+    enum notwc_direction direction;
     if(strcmp(args[0], "up") == 0) {
-      direction = OWL_UP;
+      direction = NOTWC_UP;
     } else if(strcmp(args[0], "left") == 0) {
-      direction = OWL_LEFT;
+      direction = NOTWC_LEFT;
     } else if(strcmp(args[0], "down") == 0) {
-      direction = OWL_DOWN;
+      direction = NOTWC_DOWN;
     } else if(strcmp(args[0], "right") == 0) {
-      direction = OWL_RIGHT;
+      direction = NOTWC_RIGHT;
     } else {
       wlr_log(WLR_ERROR, "invalid args to %s", action);
       free(k);
@@ -367,7 +367,7 @@ config_free_args(char **args, size_t arg_count) {
 }
 
 bool
-config_handle_value(struct owl_config *c, char *keyword, char **args, size_t arg_count) {
+config_handle_value(struct notwc_config *c, char *keyword, char **args, size_t arg_count) {
   if(strcmp(keyword, "min_toplevel_size") == 0) {
     if(arg_count < 1) goto invalid;
 
@@ -592,11 +592,11 @@ try_open_config_file() {
   char path[512];
   char *config_home = getenv("XDG_CONFIG_HOME");
   if(config_home != NULL) {
-    snprintf(path, sizeof(path), "%s/owl/owl.conf", config_home);
+    snprintf(path, sizeof(path), "%s/notwc/notwc.conf", config_home);
   } else {
     char *home = getenv("HOME");
     if(home != NULL) {
-      snprintf(path, sizeof(path), "%s/.config/owl/owl.conf", home);
+      snprintf(path, sizeof(path), "%s/.config/notwc/notwc.conf", home);
     } else {
       return NULL;
     }
@@ -709,9 +709,9 @@ config_handle_line(char *line, size_t line_number, char **keyword,
 }
 
 void
-config_set_default_needed_params(struct owl_config *c) {
+config_set_default_needed_params(struct notwc_config *c) {
   /* as we are initializing config with calloc, some fields that are necessary in order
-   * for owl to not crash may be not specified in the config.
+   * for notwc to not crash may be not specified in the config.
    * we set their values to some default value.*/
   if(c->keyboard_rate == 0) {
     c->keyboard_rate = 150;
@@ -769,21 +769,21 @@ config_set_default_needed_params(struct owl_config *c) {
   }
 }
 
-extern struct owl_server server;
+extern struct notwc_server server;
 
 bool
 server_load_config() {
-  struct owl_config *c = calloc(1, sizeof(*c));
+  struct notwc_config *c = calloc(1, sizeof(*c));
 
   FILE *config_file = try_open_config_file();
   if(config_file == NULL) {
     wlr_log(WLR_INFO, "couldn't open config file, backing to default config");
-    char *default_config_path = getenv("OWL_DEFAULT_CONFIG_PATH");
+    char *default_config_path = getenv("NOTWC_DEFAULT_CONFIG_PATH");
     if(default_config_path == NULL) {
-      default_config_path = "/usr/share/owl/default.conf";
-      wlr_log(WLR_INFO, "no env OWL_DEFAULT_CONFIG_PATH set, using the default %s", default_config_path);
+      default_config_path = "/usr/share/notwc/default.conf";
+      wlr_log(WLR_INFO, "no env NOTWC_DEFAULT_CONFIG_PATH set, using the default %s", default_config_path);
     } else {
-      wlr_log(WLR_INFO, "env OWL_DEFAULT_CONFIG_PATH set to %s", default_config_path);
+      wlr_log(WLR_INFO, "env NOTWC_DEFAULT_CONFIG_PATH set to %s", default_config_path);
     }
     config_file = fopen(default_config_path, "r");
     if(config_file == NULL) {

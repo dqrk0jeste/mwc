@@ -1,6 +1,6 @@
 #pragma once
 
-/* here is the ipc protocol implemented in this file(server) and owl-ipc(client):
+/* here is the ipc protocol implemented in this file(server) and notwc-ipc(client):
  *  - there is a pipe called PIPE_NAME opened by the server
  *  - clients who want to subscribe to the ipc to receive events should open another pipe,
  *    and then send the new pipes name to PIPE_NAME and add \x1E to the end to signalize end of message
@@ -15,7 +15,7 @@
 #include <sys/stat.h>
 #include <wayland-util.h>
 
-#define PIPE_NAME "/tmp/owl/ipc"
+#define PIPE_NAME "/tmp/notwc/ipc"
 #define MAX_CLIENT_PIPE_NAME_LENGTH 128
 
 struct ipc_client {

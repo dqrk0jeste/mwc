@@ -3,10 +3,10 @@
 #include <wlr/types/wlr_input_device.h>
 #include <libinput.h>
 
-enum owl_cursor_mode {
-	OWL_CURSOR_PASSTHROUGH,
-	OWL_CURSOR_MOVE,
-	OWL_CURSOR_RESIZE,
+enum notwc_cursor_mode {
+	NOTWC_CURSOR_PASSTHROUGH,
+	NOTWC_CURSOR_MOVE,
+	NOTWC_CURSOR_RESIZE,
 };
 
 void

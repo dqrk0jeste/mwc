@@ -4,7 +4,7 @@
 #   - toplevel class
 #   - toplevel title
 
-owl-ipc | while read -r line; do
+notwc-ipc | while read -r line; do
   # if the line starts with active-toplevel
   if [[ "$line" == active-toplevel* ]]; then
     # we extract the arguments and take the third one - title

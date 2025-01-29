@@ -1,4 +1,4 @@
-#include "owl.h"
+#include "notwc.h"
 
 #include "helpers.h"
 #include "ipc.h"
@@ -46,7 +46,7 @@
 #include <wlr/types/wlr_session_lock_v1.h>
 
 /* we initialize an instance of our global state */
-struct owl_server server;
+struct notwc_server server;
 
 /* handles child processes */
 void
@@ -66,7 +66,7 @@ server_handle_new_input(struct wl_listener *listener, void *data) {
       server_handle_new_pointer(input);
       break;
     default:
-      /* owl doesnt support touch devices, drawing tablets etc */
+      /* notwc doesnt support touch devices, drawing tablets etc */
       break;
   }
 
@@ -119,7 +119,7 @@ void
 server_handle_request_set_selection(struct wl_listener *listener, void *data) {
   /* this event is raised by the seat when a client wants to set the selection,
    * usually when the user copies something. wlroots allows compositors to
-   * ignore such requests if they so choose, but in owl we always honor
+   * ignore such requests if they so choose, but in notwc we always honor
    */
   struct wlr_seat_request_set_selection_event *event = data;
   wlr_seat_set_selection(server.seat, event->source, event->serial);
@@ -141,10 +141,10 @@ main(int argc, char *argv[]) {
     }
   }
 
-  mkdir("/tmp/owl", 0777);
+  mkdir("/tmp/notwc", 0777);
   if(debug) {
     /* make it so all the logs do to the log file */
-    FILE *logs = fopen("/tmp/owl/logs", "w");
+    FILE *logs = fopen("/tmp/notwc/logs", "w");
     if(logs != NULL) {
       int fd = fileno(logs);
       close(1);
@@ -280,7 +280,7 @@ main(int argc, char *argv[]) {
    * And more comments are sprinkled throughout the notify functions above.
    */
 
-  server.cursor_mode = OWL_CURSOR_PASSTHROUGH;
+  server.cursor_mode = NOTWC_CURSOR_PASSTHROUGH;
   server.cursor_motion.notify = server_handle_cursor_motion;
   wl_signal_add(&server.cursor->events.motion, &server.cursor_motion);
   server.cursor_motion_absolute.notify = server_handle_cursor_motion_absolute;
@@ -397,7 +397,7 @@ main(int argc, char *argv[]) {
   server.running = true;
 
   /* run the wayland event loop. */
-  wlr_log(WLR_INFO, "running owl on WAYLAND_DISPLAY=%s", socket);
+  wlr_log(WLR_INFO, "running notwc on WAYLAND_DISPLAY=%s", socket);
   wl_display_run(server.wl_display);
 
   /* Once wl_display_run returns, we destroy all clients then shut down the

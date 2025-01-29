@@ -3,9 +3,9 @@
 #include <wlr/types/wlr_output.h>
 
 #include "workspace.h"
-#include "owl.h"
+#include "notwc.h"
 
-struct owl_output {
+struct notwc_output {
 	struct wl_list link;
 	struct wlr_output *wlr_output;
   struct wl_list workspaces;
@@ -18,7 +18,7 @@ struct owl_output {
     struct wl_list overlay;
   } layers;
 
-  struct owl_workspace *active_workspace;
+  struct notwc_workspace *active_workspace;
 
   struct wlr_scene_rect *session_lock_rect;
 
@@ -34,26 +34,26 @@ bool
 output_initialize(struct wlr_output *output, struct output_config *config);
 
 bool
-output_transfer_existing_workspaces(struct owl_output *output);
+output_transfer_existing_workspaces(struct notwc_output *output);
 
-struct owl_workspace *
-output_find_owned_workspace(struct owl_output *output);
+struct notwc_workspace *
+output_find_owned_workspace(struct notwc_output *output);
 
 bool
 output_apply_preffered_mode(struct wlr_output *wlr_output, struct wlr_output_state *state);
 
 double
-output_frame_duration_ms(struct owl_output *output);
+output_frame_duration_ms(struct notwc_output *output);
 
-struct owl_output *
-output_get_relative(struct owl_output *output, enum owl_direction direction);
-
-void
-cursor_jump_output(struct owl_output *output);
+struct notwc_output *
+output_get_relative(struct notwc_output *output, enum notwc_direction direction);
 
 void
-focus_output(struct owl_output *output,
-             enum owl_direction side);
+cursor_jump_output(struct notwc_output *output);
+
+void
+focus_output(struct notwc_output *output,
+             enum notwc_direction side);
 
 void
 output_handle_frame(struct wl_listener *listener, void *data);
@@ -65,4 +65,4 @@ void
 output_handle_destroy(struct wl_listener *listener, void *data);
 
 void
-output_move_workspaces(struct owl_output *dest, struct owl_output *src);
+output_move_workspaces(struct notwc_output *dest, struct notwc_output *src);
