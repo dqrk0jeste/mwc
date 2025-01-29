@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <wlr/util/log.h>
+#include <wlr/util/box.h>
 
 extern struct notwc_server server;
 
@@ -199,25 +200,38 @@ void
 toplevel_draw_shadow(struct owl_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
+
+  uint32_t delta = server.config->shadows_size + server.config->border_width;
+
+  /* we calculate where to clip the shadow */
+  struct wlr_box toplevel_box = { 0, 0, width, height };
+  struct wlr_box shadow_box = {
+    .x = server.config->shadows_position.value.x,
+    .y = server.config->shadows_position.value.y,
+    .width = width + 2 * delta,
+    .height = height + 2 *delta,
+  };
+
+  struct wlr_box intersection_box;
+  wlr_box_intersection(&intersection_box, &toplevel_box, &shadow_box);
+
   struct clipped_region clipped_region = {
-    .area = { 0, 0, width, height },
+    .area = intersection_box,
     .corner_radius = max(server.config->border_radius, 1),
     .corners = server.config->border_radius_location,
   };
 
-  uint32_t delta = server.config->shadows_size + server.config->border_width;
-  width += 2 * delta;
-  height += 2 * delta;
   if(toplevel->shadow == NULL) {
-    toplevel->shadow = wlr_scene_shadow_create(toplevel->scene_tree, width, height,
+    toplevel->shadow = wlr_scene_shadow_create(toplevel->scene_tree,
+                                               shadow_box.width, shadow_box.height,
                                                server.config->border_radius,
                                                server.config->shadows_blur,
                                                server.config->shadows_color);
     wlr_scene_node_lower_to_bottom(&toplevel->shadow->node);
   }
 
-  wlr_scene_shadow_set_size(toplevel->shadow, width, height);
-  wlr_scene_node_set_position(&toplevel->shadow->node, -delta, -delta);
+  wlr_scene_shadow_set_size(toplevel->shadow, shadow_box.width, shadow_box.height);
+  wlr_scene_node_set_position(&toplevel->shadow->node, shadow_box.x, shadow_box.y);
   wlr_scene_shadow_set_clipped_region(toplevel->shadow, clipped_region);
 }
 
