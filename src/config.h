@@ -123,6 +123,10 @@ struct notwc_config {
   enum corner_location border_radius_location;
   bool blur;
   struct blur_data blur_params;
+  bool shadows;
+  uint32_t shadows_size;
+  float shadows_color[4];
+  double shadows_blur;
 
   uint32_t master_count;
   double master_ratio;
