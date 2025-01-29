@@ -72,7 +72,6 @@ struct pointer_config {
   type value;                         \
   bool specified;                     \
 }                                     \
-/* not used currently but may be needed in the future */
 
 struct notwc_config {
   struct wl_list outputs;
@@ -125,6 +124,10 @@ struct notwc_config {
   struct blur_data blur_params;
   bool shadows;
   uint32_t shadows_size;
+  WITH_SPECIFIED(struct {
+    int32_t x;
+    int32_t y;
+  }) shadows_position;
   float shadows_color[4];
   double shadows_blur;
 
