@@ -34,6 +34,7 @@
 - pixman
 - libxkbcommmon
 - wlroots 18.0 
+- scenefx (latest git)
 
 > \* compile-time dependencies
 
@@ -46,6 +47,7 @@ make
 
 ## installation
 
+> does not install this version of notwc
 ### arch
 `notwc` is available in the arch user repository under the name `notwc-compositor-git`. you can install it with your favourite aur helper
 ```bash
@@ -86,9 +88,9 @@ for detailed documentation see `examples/example.conf`. you can also find the de
 ## todo
 - [ ] fix issues
 - [x] animations
-- [ ] rounded corners
+- [x] rounded corners
 - [x] transparency
-- [ ] blur
+- [x] blur
 - [x] drag and drop implementation
 - [x] monitor hotplugging
 - [x] complete foreign toplevel implementation (toplevel enter/leave output missing)
