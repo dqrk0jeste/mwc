@@ -630,6 +630,25 @@ config_handle_value(struct owl_config *c, char *keyword, char **args, size_t arg
     if(arg_count < 1) goto invalid;
 
     c->blur_params.saturation = max(atof(args[0]), 0.0);
+  } else if(strcmp(keyword, "shadows") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->shadows = atoi(args[0]);
+  } else if(strcmp(keyword, "shadows_size") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->shadows_size = max(atoi(args[0]), 0);
+  } else if(strcmp(keyword, "shadows_blur") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->shadows_blur = max(atof(args[0]), 0.0);
+  } else if(strcmp(keyword, "shadows_color") == 0) {
+    if(arg_count < 4) goto invalid;
+
+    c->shadows_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
+    c->shadows_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
+    c->shadows_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
+    c->shadows_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);

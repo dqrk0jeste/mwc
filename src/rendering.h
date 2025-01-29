@@ -29,6 +29,9 @@ void
 toplevel_draw_borders(struct owl_toplevel *toplevel);
 
 void
+toplevel_draw_shadow(struct owl_toplevel *toplevel);
+
+void
 toplevel_draw_placeholder(struct owl_toplevel *toplevel);
 
 double

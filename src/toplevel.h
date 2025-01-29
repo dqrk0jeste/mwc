@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scenefx/types/wlr_scene.h>
+
 #include "rendering.h"
 #include "owl.h"
 #include "pointer.h"
@@ -14,8 +16,10 @@ struct owl_toplevel {
   struct wl_list link;
   struct wlr_xdg_toplevel *xdg_toplevel;
   struct owl_workspace *workspace;
+
   struct wlr_scene_tree *scene_tree;
   struct wlr_scene_rect *border;
+  struct wlr_scene_shadow *shadow;
 
   struct owl_something something;
 

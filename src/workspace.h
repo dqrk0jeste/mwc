@@ -1,5 +1,7 @@
 #pragma once
 
+#include <scenefx/types/wlr_scene.h>
+
 #include "config.h"
 #include "toplevel.h"
 #include "output.h"

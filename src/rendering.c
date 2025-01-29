@@ -1,3 +1,4 @@
+#include <scenefx/types/fx/clipped_region.h>
 #include <scenefx/types/fx/corner_location.h>
 #include <scenefx/types/wlr_scene.h>
 
@@ -189,6 +190,32 @@ toplevel_animation_next_tick(struct owl_toplevel *toplevel) {
   }
 }
 
+void
+toplevel_draw_shadow(struct owl_toplevel *toplevel) {
+  uint32_t width, height;
+  toplevel_get_actual_size(toplevel, &width, &height);
+  struct clipped_region clipped_region = {
+    .area = { 0, 0, width, height },
+    .corner_radius = max(server.config->border_radius, 1),
+    .corners = server.config->border_radius_location,
+  };
+
+  uint32_t delta = server.config->shadows_size + server.config->border_width;
+  width += 2 * delta;
+  height += 2 * delta;
+  if(toplevel->shadow == NULL) {
+    toplevel->shadow = wlr_scene_shadow_create(toplevel->scene_tree, width, height,
+                                               server.config->border_radius,
+                                               server.config->shadows_blur,
+                                               server.config->shadows_color);
+    wlr_scene_node_lower_to_bottom(&toplevel->shadow->node);
+  }
+
+  wlr_scene_shadow_set_size(toplevel->shadow, width, height);
+  wlr_scene_node_set_position(&toplevel->shadow->node, -delta, -delta);
+  wlr_scene_shadow_set_clipped_region(toplevel->shadow, clipped_region);
+}
+
 bool
 toplevel_draw_frame(struct owl_toplevel *toplevel) {
   if(!toplevel->mapped) return false;
@@ -205,6 +232,9 @@ toplevel_draw_frame(struct owl_toplevel *toplevel) {
   }
 
   toplevel_draw_borders(toplevel);
+  if(server.config->shadows) {
+    toplevel_draw_shadow(toplevel);
+  }
   toplevel_apply_clip(toplevel);
   toplevel_buffer_apply_effects(toplevel);
 
