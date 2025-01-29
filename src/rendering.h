@@ -29,6 +29,9 @@ void
 toplevel_draw_borders(struct notwc_toplevel *toplevel);
 
 void
+toplevel_draw_shadow(struct notwc_toplevel *toplevel);
+
+void
 toplevel_draw_placeholder(struct notwc_toplevel *toplevel);
 
 double
