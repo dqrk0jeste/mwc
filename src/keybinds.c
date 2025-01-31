@@ -455,7 +455,7 @@ keybind_swap_focused_toplevel(void *data) {
 }
 
 void
-keybind_switch_focused_toplevel_state(void *data) {
+keybind_focused_toplevel_toggle_floating(void *data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
   if(toplevel == NULL || toplevel->fullscreen) return;
 
@@ -501,3 +501,14 @@ keybind_switch_focused_toplevel_state(void *data) {
   layout_set_pending_state(toplevel->workspace);
 }
 
+void
+keybind_focused_toplevel_toggle_fullscreen(void* data) {
+  struct mwc_toplevel *toplevel = server.focused_toplevel;
+  if(toplevel == NULL) return;
+
+  if(toplevel->fullscreen) {
+    toplevel_unset_fullscreen(toplevel);
+  } else {
+    toplevel_set_fullscreen(toplevel);
+  }
+}

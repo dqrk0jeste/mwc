@@ -268,8 +268,9 @@ config_add_keybind(struct mwc_config *c, char *modifiers, char *key,
     k->args = args_0_copy;
   } else if(strcmp(action, "kill_active") == 0) {
     k->action = keybind_close_keyboard_focused_toplevel;
-  } else if(strcmp(action, "switch_floating_state") == 0) {
-    k->action = keybind_switch_focused_toplevel_state;
+  } else if(strcmp(action, "switch_floating_state") == 0
+            || strcmp(action, "toggle_floating") == 0) {
+    k->action = keybind_focused_toplevel_toggle_floating;
   } else if(strcmp(action, "resize") == 0) {
     k->action = keybind_resize_focused_toplevel;
     k->stop = keybind_stop_resize_focused_toplevel;
@@ -348,6 +349,8 @@ config_add_keybind(struct mwc_config *c, char *modifiers, char *key,
     k->action = keybind_next_workspace;
   } else if(strcmp(action, "prev_workspace") == 0) {
     k->action = keybind_prev_workspace;
+  } else if(strcmp(action, "toggle_fullscreen") == 0) {
+    k->action = keybind_focused_toplevel_toggle_fullscreen;
   } else {
     wlr_log(WLR_ERROR, "invalid keybind action %s", action);
     free(k);
