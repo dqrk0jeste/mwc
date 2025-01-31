@@ -2,7 +2,7 @@
 
 #include "layer_surface.h"
 
-#include "notwc.h"
+#include "mwc.h"
 #include "popup.h"
 #include "output.h"
 #include "something.h"
@@ -15,17 +15,17 @@
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
 server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
   struct wlr_layer_surface_v1 *wlr_layer_surface = data;
 
-  struct notwc_layer_surface *layer_surface = calloc(1, sizeof(*layer_surface));
+  struct mwc_layer_surface *layer_surface = calloc(1, sizeof(*layer_surface));
   layer_surface->wlr_layer_surface = wlr_layer_surface;
   wlr_layer_surface->data = layer_surface;
 
-  layer_surface->something.type = NOTWC_LAYER_SURFACE;
+  layer_surface->something.type = MWC_LAYER_SURFACE;
   layer_surface->something.layer_surface = layer_surface;
   
   if(layer_surface->wlr_layer_surface->output == NULL) {
@@ -33,7 +33,7 @@ server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
     layer_surface->wlr_layer_surface->output = server.active_workspace->output->wlr_output;
   }
 
-  struct notwc_output *output = layer_surface->wlr_layer_surface->output->data;
+  struct mwc_output *output = layer_surface->wlr_layer_surface->output->data;
   wlr_fractional_scale_v1_notify_scale(layer_surface->wlr_layer_surface->surface,
                                        output->wlr_output->scale);
 
@@ -65,11 +65,11 @@ server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
 
 void
 layer_surface_handle_commit(struct wl_listener *listener, void *data) {
-  struct notwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, commit);
+  struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, commit);
 
   if(!layer_surface->wlr_layer_surface->initialized) return;
 
-  struct notwc_output *output = layer_surface->wlr_layer_surface->output->data;
+  struct mwc_output *output = layer_surface->wlr_layer_surface->output->data;
 
   uint32_t committed = layer_surface->wlr_layer_surface->current.committed;
 	enum zwlr_layer_shell_v1_layer layer = layer_surface->wlr_layer_surface->current.layer;
@@ -95,11 +95,11 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
 
 void
 layer_surface_handle_map(struct wl_listener *listener, void *data) {
-  struct notwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, map);
+  struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, map);
   struct wlr_layer_surface_v1 *wlr_layer_surface = layer_surface->wlr_layer_surface;
 
   enum zwlr_layer_shell_v1_layer layer = wlr_layer_surface->pending.layer;
-  struct notwc_output *output = wlr_layer_surface->output->data;
+  struct mwc_output *output = wlr_layer_surface->output->data;
 
   wlr_scene_node_raise_to_top(&layer_surface->scene->tree->node);
 
@@ -115,11 +115,11 @@ layer_surface_handle_map(struct wl_listener *listener, void *data) {
 
 void
 layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
-  struct notwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, unmap);
+  struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, unmap);
 
   wl_list_remove(&layer_surface->link);
 
-  struct notwc_output *output = layer_surface->wlr_layer_surface->output->data;
+  struct mwc_output *output = layer_surface->wlr_layer_surface->output->data;
 
   if(output == NULL) {
     if(layer_surface == server.focused_layer_surface) {
@@ -135,7 +135,7 @@ layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
     server.exclusive = false;
     
     bool focused = false;
-    struct notwc_layer_surface *l;
+    struct mwc_layer_surface *l;
     wl_list_for_each(l, &output->layers.overlay, link) {
       if(l->wlr_layer_surface->current.keyboard_interactive) {
         focus_layer_surface(l);
@@ -155,11 +155,11 @@ layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
          && server.prev_focused->workspace == server.active_workspace) {
         focus_toplevel(server.prev_focused);
       } else if(!wl_list_empty(&server.active_workspace->masters)) {
-        struct notwc_toplevel *first = wl_container_of(server.active_workspace->masters.next,
+        struct mwc_toplevel *first = wl_container_of(server.active_workspace->masters.next,
                                                      first, link);
         focus_toplevel(first);
       } else if(!wl_list_empty(&server.active_workspace->floating_toplevels)) {
-        struct notwc_toplevel *first = wl_container_of(server.active_workspace->floating_toplevels.next,
+        struct mwc_toplevel *first = wl_container_of(server.active_workspace->floating_toplevels.next,
                                                      first, link);
         focus_toplevel(first);
       }
@@ -171,7 +171,7 @@ layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
 
 void
 layer_surface_handle_destroy(struct wl_listener *listener, void *data) {
-  struct notwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, destroy);
+  struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, destroy);
 
   wl_list_remove(&layer_surface->map.link);
   wl_list_remove(&layer_surface->unmap.link);
@@ -182,17 +182,17 @@ layer_surface_handle_destroy(struct wl_listener *listener, void *data) {
 
 void
 layer_surface_handle_new_popup(struct wl_listener *listener, void *data) {
-  struct notwc_layer_surface *layer_surface = wl_container_of(listener,
+  struct mwc_layer_surface *layer_surface = wl_container_of(listener,
                                                             layer_surface, new_popup);
   struct wlr_xdg_popup *xdg_popup = data;
 
   /* see server_handle_new_xdg_popup() */
-  struct notwc_popup *popup = xdg_popup->base->data;
+  struct mwc_popup *popup = xdg_popup->base->data;
 
   struct wlr_scene_tree *parent_tree = layer_surface->scene->tree;
   popup->scene_tree = wlr_scene_xdg_surface_create(parent_tree, xdg_popup->base);
 
-  popup->something.type = NOTWC_POPUP;
+  popup->something.type = MWC_POPUP;
   popup->something.popup = popup;
 
   popup->scene_tree->node.data = &popup->something;
@@ -200,7 +200,7 @@ layer_surface_handle_new_popup(struct wl_listener *listener, void *data) {
 }
 
 void
-focus_layer_surface(struct notwc_layer_surface *layer_surface) {
+focus_layer_surface(struct mwc_layer_surface *layer_surface) {
   if(server.lock != NULL) return;
 
   enum zwlr_layer_surface_v1_keyboard_interactivity keyboard_interactive =
@@ -227,14 +227,14 @@ focus_layer_surface(struct notwc_layer_surface *layer_surface) {
 }
 
 void
-layer_surfaces_commit_layer(struct notwc_output *output,
+layer_surfaces_commit_layer(struct mwc_output *output,
                             enum zwlr_layer_shell_v1_layer layer, bool exclusive) {
 	struct wl_list *list = layer_get_list(output, layer);
 
   struct wlr_box full_area;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &full_area);
 
-  struct notwc_layer_surface *l;
+  struct mwc_layer_surface *l;
 	wl_list_for_each(l, list, link) {
 		if((l->wlr_layer_surface->current.exclusive_zone > 0) != exclusive) continue;
 
@@ -243,7 +243,7 @@ layer_surfaces_commit_layer(struct notwc_output *output,
 }
 
 void
-layer_surfaces_commit(struct notwc_output *output) {
+layer_surfaces_commit(struct mwc_output *output) {
   struct wlr_box full_area;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &full_area);
 
@@ -277,7 +277,7 @@ layer_get_scene(enum zwlr_layer_shell_v1_layer layer) {
 }
 
 struct wl_list *
-layer_get_list(struct notwc_output *output, enum zwlr_layer_shell_v1_layer layer) {
+layer_get_list(struct mwc_output *output, enum zwlr_layer_shell_v1_layer layer) {
   switch(layer) {
     case ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND:
       return &output->layers.background;

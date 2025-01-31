@@ -5,7 +5,7 @@
 #include "rendering.h"
 
 #include "helpers.h"
-#include "notwc.h"
+#include "mwc.h"
 #include "config.h"
 #include "something.h"
 #include "toplevel.h"
@@ -18,10 +18,10 @@
 #include <wlr/util/log.h>
 #include <wlr/util/box.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
-toplevel_draw_borders(struct notwc_toplevel *toplevel) {
+toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   uint32_t border_width = server.config->border_width;
   uint32_t border_radius = max(server.config->border_radius, 1);
   enum corner_location border_radius_location = server.config->border_radius_location;
@@ -55,40 +55,39 @@ toplevel_draw_borders(struct notwc_toplevel *toplevel) {
   wlr_scene_rect_set_color(toplevel->border, border_color);
 }
 
-struct notwc_something *
+struct mwc_something *
 scene_tree_get_something(struct wlr_scene_tree *tree, 
                          struct wlr_scene_tree *up_to) {
-  struct notwc_something *something = tree->node.data;
+  struct mwc_something *something = tree->node.data;
   if(something != NULL) return something;
 
-  if(tree->node.parent == tree) return NULL;
+  if(tree == up_to) return NULL;
 
   return scene_tree_get_something(tree->node.parent, up_to);
 }
 
-struct notwc_something *
+struct mwc_something *
 scene_buffer_get_something(struct wlr_scene_buffer *buffer,
                            struct wlr_scene_tree *up_to) {
   return scene_tree_get_something(buffer->node.parent, up_to);
 }
 
-struct iter_scene_buffer_apply_effects_args {
-  double opacity;
-  struct wlr_scene_tree *toplevel_tree;
-};
-
 /* this is bad, as it climbs up and down the tree a lot, but will do for testing */
 void
 iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
                            int sx, int sy, void *data) {
-  struct iter_scene_buffer_apply_effects_args *args = data;
-  struct notwc_something *something = scene_buffer_get_something(buffer, args->toplevel_tree);
+  struct mwc_toplevel *toplevel = data;
+  struct mwc_something *something = scene_buffer_get_something(buffer, toplevel->scene_tree);
   assert(something != NULL);
 
-  wlr_scene_buffer_set_opacity(buffer, args->opacity);
+  double opacity = toplevel == server.focused_toplevel
+    ? toplevel->active_opacity
+    : toplevel->inactive_opacity;
+
+  wlr_scene_buffer_set_opacity(buffer, opacity);
 
   /* we dont blur or round popups */
-  if(something->type == NOTWC_POPUP) return;
+  if(something->type == MWC_POPUP) return;
 
   if(server.config->blur) {
     wlr_scene_buffer_set_backdrop_blur(buffer, true);
@@ -96,27 +95,22 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
     wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
   }
 
+  uint32_t border_radius = toplevel->fullscreen ? 0 : server.config->border_radius;
+
   if(server.config->border_radius > 0) {
-    wlr_scene_buffer_set_corner_radius(buffer, server.config->border_radius,
+    wlr_scene_buffer_set_corner_radius(buffer, border_radius,
                                        server.config->border_radius_location);
   }
 }
 
 void
-toplevel_buffer_apply_effects(struct notwc_toplevel *toplevel) {
-  struct iter_scene_buffer_apply_effects_args args = {
-    .opacity = toplevel->fullscreen
-      ? 1.0 : toplevel == server.focused_toplevel
-        ? toplevel->active_opacity
-        : toplevel->inactive_opacity,
-  };
-
+toplevel_buffer_apply_effects(struct mwc_toplevel *toplevel) {
   wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
-                                 iter_scene_buffer_apply_effects, &args);
+                                 iter_scene_buffer_apply_effects, toplevel);
 }
 
 void
-toplevel_apply_clip(struct notwc_toplevel *toplevel) {
+toplevel_apply_clip(struct mwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
@@ -132,8 +126,8 @@ toplevel_apply_clip(struct notwc_toplevel *toplevel) {
 
   struct wlr_scene_node *n;
   wl_list_for_each(n, &toplevel->scene_tree->children, link) {
-    struct notwc_something *view = n->data;
-    if(view != NULL && view->type == NOTWC_POPUP) {
+    struct mwc_something *view = n->data;
+    if(view != NULL && view->type == MWC_POPUP) {
       wlr_scene_subsurface_tree_set_clip(n, NULL);
     }
   }
@@ -158,7 +152,7 @@ find_animation_curve_at(double t) {
 }
 
 bool
-toplevel_animation_next_tick(struct notwc_toplevel *toplevel) {
+toplevel_animation_next_tick(struct mwc_toplevel *toplevel) {
   double animation_passed =
     (double)toplevel->animation.passed_frames / toplevel->animation.total_frames;
   double factor = find_animation_curve_at(animation_passed);
@@ -192,7 +186,7 @@ toplevel_animation_next_tick(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_draw_shadow(struct notwc_toplevel *toplevel) {
+toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
@@ -231,7 +225,7 @@ toplevel_draw_shadow(struct notwc_toplevel *toplevel) {
 }
 
 bool
-toplevel_draw_frame(struct notwc_toplevel *toplevel) {
+toplevel_draw_frame(struct mwc_toplevel *toplevel) {
   if(!toplevel->mapped) return false;
   wlr_scene_node_set_enabled(&toplevel->scene_tree->node, true);
 
@@ -256,10 +250,10 @@ toplevel_draw_frame(struct notwc_toplevel *toplevel) {
 }
 
 void
-workspace_draw_frame(struct notwc_workspace *workspace) {
+workspace_draw_frame(struct mwc_workspace *workspace) {
   bool need_more_frames = false;
 
-  struct notwc_toplevel *t;
+  struct mwc_toplevel *t;
   if(workspace->fullscreen_toplevel != NULL) {
     if(toplevel_draw_frame(workspace->fullscreen_toplevel)) {
       need_more_frames = true;

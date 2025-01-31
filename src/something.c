@@ -2,7 +2,7 @@
 
 #include "something.h"
 
-#include "notwc.h"
+#include "mwc.h"
 #include "layer_surface.h"
 #include "session_lock.h"
 #include "wlr/util/log.h"
@@ -11,9 +11,9 @@
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_scene.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
-struct notwc_something *
+struct mwc_something *
 root_parent_of_surface(struct wlr_surface *wlr_surface) {
   struct wlr_surface *root_wlr_surface =
     wlr_surface_get_root_surface(wlr_surface);
@@ -28,13 +28,13 @@ root_parent_of_surface(struct wlr_surface *wlr_surface) {
     struct wlr_layer_surface_v1 *wlr_layer_surface =
       wlr_layer_surface_v1_try_from_wlr_surface(root_wlr_surface);
     if(wlr_layer_surface != NULL) {
-      struct notwc_layer_surface *layer_surface = wlr_layer_surface->data;
+      struct mwc_layer_surface *layer_surface = wlr_layer_surface->data;
       tree = layer_surface->scene->tree;
     } else {
       struct wlr_session_lock_surface_v1 *wlr_lock_surface =
         wlr_session_lock_surface_v1_try_from_wlr_surface(root_wlr_surface);
       if(wlr_lock_surface != NULL) {
-        struct notwc_lock_surface *lock_surface = wlr_lock_surface->data;
+        struct mwc_lock_surface *lock_surface = wlr_lock_surface->data;
         tree = lock_surface->scene_tree;
       } else {
         return NULL;
@@ -42,8 +42,8 @@ root_parent_of_surface(struct wlr_surface *wlr_surface) {
     }
   }
 
-  struct notwc_something *something = tree->node.data;
-  while(something == NULL || something->type == NOTWC_POPUP) {
+  struct mwc_something *something = tree->node.data;
+  while(something == NULL || something->type == MWC_POPUP) {
     tree = tree->node.parent;
     something = tree->node.data;
   }
@@ -51,7 +51,7 @@ root_parent_of_surface(struct wlr_surface *wlr_surface) {
   return something;
 }
 
-struct notwc_something *
+struct mwc_something *
 something_at(double lx, double ly, struct wlr_surface **surface,
              double *sx, double *sy) {
   /* this returns the topmost node in the scene at the given layout coords */
@@ -71,8 +71,8 @@ something_at(double lx, double ly, struct wlr_surface **surface,
   *surface = scene_surface->surface;
 
   struct wlr_scene_tree *tree = node->parent;
-  struct notwc_something *something = tree->node.data;
-  while(something == NULL || something->type == NOTWC_POPUP) {
+  struct mwc_something *something = tree->node.data;
+  while(something == NULL || something->type == MWC_POPUP) {
     tree = tree->node.parent;
     something = tree->node.data;
   }

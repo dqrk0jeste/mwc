@@ -1,15 +1,15 @@
 #include "layout.h"
 
-#include "notwc.h"
+#include "mwc.h"
 #include "config.h"
 #include "toplevel.h"
 
 #include <wlr/types/wlr_scene.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
-calculate_masters_dimensions(struct notwc_output *output, uint32_t master_count,
+calculate_masters_dimensions(struct mwc_output *output, uint32_t master_count,
                              uint32_t slave_count, uint32_t *width, uint32_t *height) {
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
@@ -37,7 +37,7 @@ calculate_masters_dimensions(struct notwc_output *output, uint32_t master_count,
 }
 
 void
-calculate_slaves_dimensions(struct notwc_output *output, uint32_t slave_count,
+calculate_slaves_dimensions(struct mwc_output *output, uint32_t slave_count,
                             uint32_t *width, uint32_t *height) {
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
@@ -55,8 +55,8 @@ calculate_slaves_dimensions(struct notwc_output *output, uint32_t slave_count,
 }
 
 bool
-toplevel_is_master(struct notwc_toplevel *toplevel) {
-  struct notwc_toplevel *t;
+toplevel_is_master(struct mwc_toplevel *toplevel) {
+  struct mwc_toplevel *t;
   wl_list_for_each(t, &toplevel->workspace->masters, link) {
     if(toplevel == t) return true;
   };
@@ -64,8 +64,8 @@ toplevel_is_master(struct notwc_toplevel *toplevel) {
 }
 
 bool
-toplevel_is_slave(struct notwc_toplevel *toplevel) {
-  struct notwc_toplevel *t;
+toplevel_is_slave(struct mwc_toplevel *toplevel) {
+  struct mwc_toplevel *t;
   wl_list_for_each(t, &toplevel->workspace->slaves, link) {
     if(toplevel == t) return true;
   };
@@ -73,14 +73,14 @@ toplevel_is_slave(struct notwc_toplevel *toplevel) {
 }
 
 void
-layout_set_pending_state(struct notwc_workspace *workspace) {
+layout_set_pending_state(struct mwc_workspace *workspace) {
   /* if there is a fullscreened toplevel we just skip */
   if(workspace->fullscreen_toplevel != NULL) return;
 
   /* if there are no masters we are done */
   if(wl_list_empty(&workspace->masters)) return;
 
-  struct notwc_output *output = workspace->output;
+  struct mwc_output *output = workspace->output;
 
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
@@ -94,7 +94,7 @@ layout_set_pending_state(struct notwc_workspace *workspace) {
   calculate_masters_dimensions(output, master_count, slave_count,
                                &master_width, &master_height);
 
-  struct notwc_toplevel *m;
+  struct mwc_toplevel *m;
   size_t i = 0;
   wl_list_for_each(m, &workspace->masters, link) {
     uint32_t master_x = output->usable_area.x + outer_gaps
@@ -118,7 +118,7 @@ layout_set_pending_state(struct notwc_workspace *workspace) {
   uint32_t slave_width, slave_height, slave_x, slave_y;
   calculate_slaves_dimensions(workspace->output, slave_count, &slave_width, &slave_height);
 
-  struct notwc_toplevel *s;
+  struct mwc_toplevel *s;
   i = 0;
   wl_list_for_each(s, &workspace->slaves, link) {
     slave_x = output->usable_area.x + output->usable_area.width * master_ratio
@@ -139,7 +139,7 @@ layout_set_pending_state(struct notwc_workspace *workspace) {
 /* this function assumes they are in the same workspace and
  * that t2 comes after t1 if in the same list */
 void
-layout_swap_tiled_toplevels(struct notwc_toplevel *t1, struct notwc_toplevel *t2) {
+layout_swap_tiled_toplevels(struct mwc_toplevel *t1, struct mwc_toplevel *t2) {
   struct wl_list *before_t1 = t1->link.prev;
   wl_list_remove(&t1->link);
   wl_list_insert(&t2->link, &t1->link);
@@ -149,55 +149,55 @@ layout_swap_tiled_toplevels(struct notwc_toplevel *t1, struct notwc_toplevel *t2
   layout_set_pending_state(t1->workspace);
 }
 
-struct notwc_toplevel *
-layout_find_closest_tiled_toplevel(struct notwc_workspace *workspace, bool master,
-                                   enum notwc_direction side) {
+struct mwc_toplevel *
+layout_find_closest_tiled_toplevel(struct mwc_workspace *workspace, bool master,
+                                   enum mwc_direction side) {
   /* this means there are no tiled toplevels */
   if(wl_list_empty(&workspace->masters)) return NULL;
 
-  struct notwc_toplevel *first_master = wl_container_of(workspace->masters.next,
+  struct mwc_toplevel *first_master = wl_container_of(workspace->masters.next,
                                                       first_master, link);
-  struct notwc_toplevel *last_master = wl_container_of(workspace->masters.prev,
+  struct mwc_toplevel *last_master = wl_container_of(workspace->masters.prev,
                                                      last_master, link);
 
-  struct notwc_toplevel *first_slave = NULL;
-  struct notwc_toplevel *last_slave = NULL;
+  struct mwc_toplevel *first_slave = NULL;
+  struct mwc_toplevel *last_slave = NULL;
   if(!wl_list_empty(&workspace->slaves)) {
     first_slave = wl_container_of(workspace->slaves.next, first_slave, link);
     last_slave = wl_container_of(workspace->slaves.prev, last_slave, link);
   }
 
   switch(side) {
-    case NOTWC_UP: {
+    case MWC_UP: {
       if(master || first_slave == NULL) return first_master;
       return first_slave;
     }
-    case NOTWC_DOWN: {
+    case MWC_DOWN: {
       if(master || last_slave == NULL) return first_master;
       return last_slave;
     }
-    case NOTWC_LEFT: {
+    case MWC_LEFT: {
       return first_master;
     }
-    case NOTWC_RIGHT: {
+    case MWC_RIGHT: {
       if(last_slave != NULL) return last_slave;
       return last_master;
     }
   }
 }
 
-struct notwc_toplevel *
-layout_find_closest_floating_toplevel(struct notwc_workspace *workspace,
-                                      enum notwc_direction side) {
+struct mwc_toplevel *
+layout_find_closest_floating_toplevel(struct mwc_workspace *workspace,
+                                      enum mwc_direction side) {
   struct wl_list *l = workspace->floating_toplevels.next;
   if(l == &workspace->floating_toplevels) return NULL;
 
-  struct notwc_toplevel *t = wl_container_of(l, t, link);
+  struct mwc_toplevel *t = wl_container_of(l, t, link);
 
-  struct notwc_toplevel *min_x = t;
-  struct notwc_toplevel *max_x = t;
-  struct notwc_toplevel *min_y = t;
-  struct notwc_toplevel *max_y = t;
+  struct mwc_toplevel *min_x = t;
+  struct mwc_toplevel *max_x = t;
+  struct mwc_toplevel *min_y = t;
+  struct mwc_toplevel *max_y = t;
 
   wl_list_for_each(t, &workspace->floating_toplevels, link) {
     if(X(t) < X(min_x)) {
@@ -213,10 +213,10 @@ layout_find_closest_floating_toplevel(struct notwc_workspace *workspace,
   }
 
   switch(side) {
-    case NOTWC_UP: return min_y;
-    case NOTWC_DOWN: return max_y;
-    case NOTWC_LEFT: return min_x;
-    case NOTWC_RIGHT: return max_x;
+    case MWC_UP: return min_y;
+    case MWC_DOWN: return max_y;
+    case MWC_LEFT: return min_x;
+    case MWC_RIGHT: return max_x;
   }
 }
 

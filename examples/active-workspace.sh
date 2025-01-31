@@ -4,7 +4,7 @@
 #   - workspace index
 #   - workspace output
 #
-notwc-ipc | while read -r line; do
+mwc-ipc | while read -r line; do
   # if the line starts with active-workspace
   if [[ "$line" == active-workspace* ]]; then
     # we extract the arguments and take the second one - index and third one - output

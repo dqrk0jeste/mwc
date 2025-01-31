@@ -73,7 +73,7 @@ struct pointer_config {
   bool specified;                     \
 }                                     \
 
-struct notwc_config {
+struct mwc_config {
   struct wl_list outputs;
   struct wl_list keybinds;
   struct wl_list pointer_keybinds;
@@ -147,24 +147,24 @@ struct notwc_config {
 };
 
 struct vec2
-calculate_animation_curve_at(struct notwc_config *c, double t);
+calculate_animation_curve_at(struct mwc_config *c, double t);
 
 void
-bake_bezier_curve_points(struct notwc_config *c);
+bake_bezier_curve_points(struct mwc_config *c);
 
 bool
-config_add_window_rule(struct notwc_config *c, char *app_id_regex, char *title_regex,
+config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_regex,
                        char *predicate, char **args, size_t arg_count);
 
 bool
-config_add_keybind(struct notwc_config *c, char *modifiers, char *key,
+config_add_keybind(struct mwc_config *c, char *modifiers, char *key,
                    char* action, char **args, size_t arg_count);
 
 void
 config_free_args(char **args, size_t arg_count);
 
 bool
-config_handle_value(struct notwc_config *c, char *keyword, char **args, size_t arg_count);
+config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg_count);
 
 FILE *
 try_open_config_file();
@@ -178,4 +178,4 @@ bool
 server_load_config();
 
 void
-config_set_default_needed_params(struct notwc_config *c);
+config_set_default_needed_params(struct mwc_config *c);

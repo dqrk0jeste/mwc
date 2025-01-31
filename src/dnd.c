@@ -2,7 +2,7 @@
 
 #include "dnd.h"
 
-#include "notwc.h"
+#include "mwc.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -13,7 +13,7 @@
 
 /* large portion of this was taken from labwc; huge thanks to consolatis */
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
 server_handle_request_drag(struct wl_listener *listener, void *data) {
