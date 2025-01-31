@@ -97,6 +97,7 @@ server_handle_request_cursor_shape(struct wl_listener *listener, void *data) {
   if(focused_client == event->seat_client) {
     const char *name = wlr_cursor_shape_v1_name(event->shape);
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, name);
+    server.client_cursor.surface = NULL;
   }
 }
 
