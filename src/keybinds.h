@@ -68,4 +68,7 @@ void
 keybind_swap_focused_toplevel(void *data);
 
 void
-keybind_switch_focused_toplevel_state(void *data);
+keybind_focused_toplevel_toggle_floating(void *data);
+
+void
+keybind_focused_toplevel_toggle_fullscreen(void *data);
