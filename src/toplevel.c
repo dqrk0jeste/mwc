@@ -11,6 +11,7 @@
 #include "workspace.h"
 #include "output.h"
 #include "helpers.h"
+#include "layer_surface.h"
 
 #include <assert.h>
 #include <limits.h>
@@ -682,6 +683,30 @@ toplevel_set_fullscreen(struct mwc_toplevel *toplevel) {
                              output_box.width, output_box.height);
   wlr_scene_node_reparent(&toplevel->scene_tree->node, server.fullscreen_tree);
 
+  /* we disable all the other toplevels so they are not seen if there is transparency */
+  struct mwc_toplevel *t;
+  wl_list_for_each(t, &workspace->masters, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, false);
+  }
+  wl_list_for_each(t, &workspace->slaves, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, false);
+  }
+  wl_list_for_each(t, &workspace->floating_toplevels, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, false);
+  }
+
+  /* we also disable bottom and top layer surfaces, and leave only the backgorund */
+  struct mwc_layer_surface *l;
+  wl_list_for_each(l, &output->layers.bottom, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, false);
+  }
+  wl_list_for_each(l, &output->layers.top, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, false);
+  }
+
   wlr_foreign_toplevel_handle_v1_set_fullscreen(toplevel->foreign_toplevel_handle, true);
 }
 
@@ -704,6 +729,29 @@ toplevel_unset_fullscreen(struct mwc_toplevel *toplevel) {
     wlr_scene_node_reparent(&toplevel->scene_tree->node, server.floating_tree);
   } else {
     wlr_scene_node_reparent(&toplevel->scene_tree->node, server.tiled_tree);
+  }
+
+  /* reenable the scene nodes */
+  struct mwc_toplevel *t;
+  wl_list_for_each(t, &workspace->masters, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+  }
+  wl_list_for_each(t, &workspace->slaves, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+  }
+  wl_list_for_each(t, &workspace->floating_toplevels, link) {
+    if(t == toplevel) continue;
+    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+  }
+
+  struct mwc_layer_surface *l;
+  wl_list_for_each(l, &output->layers.bottom, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, true);
+  }
+  wl_list_for_each(l, &output->layers.top, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, true);
   }
 
   layout_set_pending_state(workspace);

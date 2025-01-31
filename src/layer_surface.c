@@ -42,6 +42,11 @@ server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
   struct wlr_scene_tree *scene = layer_get_scene(layer);
   layer_surface->scene = wlr_scene_layer_surface_v1_create(scene, wlr_layer_surface);
 
+  if(output->active_workspace->fullscreen_toplevel != NULL &&
+     (layer == ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM || layer == ZWLR_LAYER_SHELL_V1_LAYER_TOP)) {
+    wlr_scene_node_set_enabled(&layer_surface->scene->tree->node, false);
+  }
+
   struct wl_list *list = layer_get_list(output, layer);
   wl_list_insert(list, &layer_surface->link);
 

@@ -79,11 +79,14 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   struct mwc_something *something = scene_buffer_get_something(buffer, toplevel->scene_tree);
   assert(something != NULL);
 
-  double opacity = toplevel->fullscreen
-    ? 1.0
-    : toplevel == server.focused_toplevel
+  double opacity;
+  if(!toplevel->fullscreen || server.config->apply_opacity_when_fullscreen) {
+    opacity = toplevel == server.focused_toplevel
       ? toplevel->active_opacity
       : toplevel->inactive_opacity;
+  } else {
+    opacity = 1.0;
+  }
 
   wlr_scene_buffer_set_opacity(buffer, opacity);
 

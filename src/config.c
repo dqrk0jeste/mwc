@@ -566,6 +566,10 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     if(arg_count < 1) goto invalid;
 
     c->active_opacity = clamp(atof(args[0]), 0.0, 1.0);
+  } else if(strcmp(keyword, "apply_opacity_when_fullscreen") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->apply_opacity_when_fullscreen = atoi(args[0]);
   } else if(strcmp(keyword, "keymap") == 0) {
     if(arg_count < 2) goto invalid;
     /* handle appending to this string */
