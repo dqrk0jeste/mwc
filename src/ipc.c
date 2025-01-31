@@ -1,6 +1,6 @@
 #include "ipc.h"
 
-#include "notwc.h"
+#include "mwc.h"
 #include "toplevel.h"
 #include "workspace.h"
 
@@ -15,7 +15,7 @@
 
 #define SEPARATOR "\x1E"
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 /* global state that keeps track of connected clients */
 static struct wl_list clients;
@@ -83,7 +83,7 @@ void *run_ipc(void *args) {
     return NULL;
   }
 
-  wlr_log(WLR_INFO, "starting notwc ipc...");
+  wlr_log(WLR_INFO, "starting mwc ipc...");
 
   remove(PIPE_NAME);
   if(mkfifo(PIPE_NAME, 0622) == -1) {

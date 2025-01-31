@@ -5,7 +5,7 @@
 #include "config.h"
 #include "ipc.h"
 #include "layout.h"
-#include "notwc.h"
+#include "mwc.h"
 #include "rendering.h"
 #include "something.h"
 #include "workspace.h"
@@ -23,17 +23,17 @@
 #include <wlr/util/log.h>
 #include <wlr/util/edges.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
 server_handle_new_toplevel(struct wl_listener *listener, void *data) {
   /* this event is raised when a client creates a new toplevel */
   struct wlr_xdg_toplevel *xdg_toplevel = data;
-  /* allocate an notwc_toplevel for this surface */
-  struct notwc_toplevel *toplevel = calloc(1, sizeof(*toplevel));
+  /* allocate an mwc_toplevel for this surface */
+  struct mwc_toplevel *toplevel = calloc(1, sizeof(*toplevel));
   toplevel->xdg_toplevel = xdg_toplevel;
 
-  toplevel->something.type = NOTWC_TOPLEVEL;
+  toplevel->something.type = MWC_TOPLEVEL;
   toplevel->something.toplevel = toplevel;
 
   toplevel->active_opacity = server.config->active_opacity;
@@ -80,7 +80,7 @@ server_handle_new_toplevel(struct wl_listener *listener, void *data) {
 }
 
 void
-toplevel_handle_initial_commit(struct notwc_toplevel *toplevel) {
+toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
   /* when an xdg_surface performs an initial commit, the compositor must
      * reply with a configure so the client can map the surface. */
   toplevel->floating = toplevel_should_float(toplevel);
@@ -107,7 +107,7 @@ toplevel_handle_initial_commit(struct notwc_toplevel *toplevel) {
        * as it is not going to be shown anyway
        * note: using just 0, 0, 0, 0 caused the toplevel to become unresponsive, because wlr_scene
        * wouldnt send frame done events. we fix this by setting the position to something on the current output */
-    struct notwc_output *output = toplevel->workspace->output;
+    struct mwc_output *output = toplevel->workspace->output;
     toplevel_set_initial_state(toplevel, output->usable_area.x, output->usable_area.y, 0, 0);
   }
 
@@ -120,7 +120,7 @@ toplevel_handle_initial_commit(struct notwc_toplevel *toplevel) {
 void
 toplevel_handle_commit(struct wl_listener *listener, void *data) {
   /* called when a new surface state is committed */
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, commit);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, commit);
 
   if(!toplevel->xdg_toplevel->base->initialized) return;
 
@@ -159,7 +159,7 @@ toplevel_handle_commit(struct wl_listener *listener, void *data) {
 void
 toplevel_handle_map(struct wl_listener *listener, void *data) {
   /* called when the surface is mapped, or ready to display on-screen. */
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, map);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, map);
 
   toplevel->mapped = true;
   toplevel->dirty = false;
@@ -176,7 +176,7 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
   toplevel->xdg_toplevel->base->data = toplevel->scene_tree;
 
   /* in the node we want to keep information what that node represents. we do that
-   * be keeping notwc_something in user data field, which is a union of all possible
+   * be keeping mwc_something in user data field, which is a union of all possible
    * 'things' we can have on the screen */
   toplevel->scene_tree->node.data = &toplevel->something;
 
@@ -206,8 +206,8 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
 void
 toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   /* called when the surface is unmapped, and should no longer be shown. */
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, unmap);
-  struct notwc_workspace *workspace = toplevel->workspace;
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, unmap);
+  struct mwc_workspace *workspace = toplevel->workspace;
 
   /* reset the cursor mode if the grabbed toplevel was unmapped. */
   if(toplevel == server.grabbed_toplevel) {
@@ -238,7 +238,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
       }
 
       if(focus_next != NULL) {
-        struct notwc_toplevel *t = wl_container_of(focus_next, t, link);
+        struct mwc_toplevel *t = wl_container_of(focus_next, t, link);
         focus_toplevel(t);
       } else {
         server.focused_toplevel = NULL;
@@ -253,7 +253,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   if(toplevel_is_master(toplevel)) {
     /* we find a new master to replace him if possible */
     if(!wl_list_empty(&workspace->slaves)) {
-      struct notwc_toplevel *s = wl_container_of(workspace->slaves.prev, s, link);
+      struct mwc_toplevel *s = wl_container_of(workspace->slaves.prev, s, link);
       wl_list_remove(&s->link);
       wl_list_insert(workspace->masters.prev, &s->link);
     }
@@ -271,7 +271,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
       }
 
       if(focus_next != NULL) {
-        struct notwc_toplevel *t = wl_container_of(focus_next, t, link);
+        struct mwc_toplevel *t = wl_container_of(focus_next, t, link);
         focus_toplevel(t);
       } else {
         server.focused_toplevel = NULL;
@@ -294,7 +294,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
       }
       /* here its not possible to have no other toplevel to give focus,
        * there are always master_count masters available */
-      struct notwc_toplevel *t = wl_container_of(focus_next, t, link);
+      struct mwc_toplevel *t = wl_container_of(focus_next, t, link);
       focus_toplevel(t);
     }
 
@@ -306,7 +306,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
 
 void
 toplevel_handle_destroy(struct wl_listener *listener, void *data) {
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, destroy);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, destroy);
 
   wlr_foreign_toplevel_handle_v1_destroy(toplevel->foreign_toplevel_handle);
 
@@ -323,15 +323,15 @@ toplevel_handle_destroy(struct wl_listener *listener, void *data) {
 }
 
 struct wlr_box
-toplevel_get_geometry(struct notwc_toplevel *toplevel) {
+toplevel_get_geometry(struct mwc_toplevel *toplevel) {
   struct wlr_box geometry;
   wlr_xdg_surface_get_geometry(toplevel->xdg_toplevel->base, &geometry);
   return geometry;
 }
 
 void
-toplevel_start_move_resize(struct notwc_toplevel *toplevel,
-                           enum notwc_cursor_mode mode, uint32_t edges) {
+toplevel_start_move_resize(struct mwc_toplevel *toplevel,
+                           enum mwc_cursor_mode mode, uint32_t edges) {
   if(toplevel == NULL) {
     return;
   }
@@ -357,10 +357,10 @@ toplevel_handle_request_move(struct wl_listener *listener, void *data) {
    * decorations. Note that a more sophisticated compositor should check the
    * provided serial against a list of button press serials sent to this
    * client, to prevent the client from requesting this whenever they want. */
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_move);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_move);
   if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()) return;
 
-  toplevel_start_move_resize(toplevel, NOTWC_CURSOR_MOVE, 0);
+  toplevel_start_move_resize(toplevel, MWC_CURSOR_MOVE, 0);
 }
 
 void
@@ -372,22 +372,22 @@ toplevel_handle_request_resize(struct wl_listener *listener, void *data) {
    * client, to prevent the client from requesting this whenever they want. */
   struct wlr_xdg_toplevel_resize_event *event = data;
 
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_resize);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_resize);
   if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()) return;
 
-  toplevel_start_move_resize(toplevel, NOTWC_CURSOR_RESIZE, event->edges);
+  toplevel_start_move_resize(toplevel, MWC_CURSOR_RESIZE, event->edges);
 }
 
 void
 toplevel_handle_request_maximize(struct wl_listener *listener, void *data) {
   /* This event is raised when a client would like to maximize itself,
    * typically because the user clicked on the maximize button on client-side
-   * decorations. notwc doesn't support maximization, but to conform to
+   * decorations. mwc doesn't support maximization, but to conform to
    * xdg-shell protocol we still must send a configure.
    * wlr_xdg_surface_schedule_configure() is used to send an empty reply.
    * However, if the request was sent before an initial commit, we don't do
    * anything and let the client finish the initial surface setup. */
-  struct notwc_toplevel *toplevel =
+  struct mwc_toplevel *toplevel =
     wl_container_of(listener, toplevel, request_maximize);
   if(toplevel->xdg_toplevel->base->initialized) {
     wlr_xdg_surface_schedule_configure(toplevel->xdg_toplevel->base);
@@ -396,10 +396,10 @@ toplevel_handle_request_maximize(struct wl_listener *listener, void *data) {
 
 void
 toplevel_handle_request_fullscreen(struct wl_listener *listener, void *data) {
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel,
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel,
                                                   request_fullscreen);
 
-  struct notwc_output *output = toplevel->workspace->output;
+  struct mwc_output *output = toplevel->workspace->output;
   if(toplevel->xdg_toplevel->requested.fullscreen) {
     toplevel_set_fullscreen(toplevel);
   } else {
@@ -408,7 +408,7 @@ toplevel_handle_request_fullscreen(struct wl_listener *listener, void *data) {
 }
 
 void
-toplevel_recheck_opacity_rules(struct notwc_toplevel *toplevel) {
+toplevel_recheck_opacity_rules(struct mwc_toplevel *toplevel) {
   /* check if it satisfies some window rule */
   struct window_rule_opacity *w;
   bool set = false;
@@ -429,7 +429,7 @@ toplevel_recheck_opacity_rules(struct notwc_toplevel *toplevel) {
 
 void
 toplevel_handle_set_app_id(struct wl_listener *listener, void *data) {
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, set_app_id);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, set_app_id);
 
   toplevel_recheck_opacity_rules(toplevel);
 
@@ -443,7 +443,7 @@ toplevel_handle_set_app_id(struct wl_listener *listener, void *data) {
 
 void
 toplevel_handle_set_title(struct wl_listener *listener, void *data) {
-  struct notwc_toplevel *toplevel = wl_container_of(listener, toplevel, set_title);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, set_title);
 
   toplevel_recheck_opacity_rules(toplevel);
 
@@ -456,7 +456,7 @@ toplevel_handle_set_title(struct wl_listener *listener, void *data) {
 }
 
 bool
-toplevel_matches_window_rule(struct notwc_toplevel *toplevel,
+toplevel_matches_window_rule(struct mwc_toplevel *toplevel,
                              struct window_rule_regex *condition) {
   char *app_id = toplevel->xdg_toplevel->app_id;
   char *title = toplevel->xdg_toplevel->title;
@@ -487,7 +487,7 @@ toplevel_matches_window_rule(struct notwc_toplevel *toplevel,
 }
 
 void
-toplevel_floating_size(struct notwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+toplevel_floating_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   char *app_id = toplevel->xdg_toplevel->app_id;
   char *title = toplevel->xdg_toplevel->title;
 
@@ -515,7 +515,7 @@ toplevel_floating_size(struct notwc_toplevel *toplevel, uint32_t *width, uint32_
 }
 
 bool
-toplevel_should_float(struct notwc_toplevel *toplevel) {
+toplevel_should_float(struct mwc_toplevel *toplevel) {
   /* we make toplevels float if they have fixed size
    * or are children of another toplevel */
   bool b =
@@ -541,15 +541,15 @@ toplevel_should_float(struct notwc_toplevel *toplevel) {
   return false;
 }
 
-struct notwc_toplevel *
+struct mwc_toplevel *
 get_pointer_focused_toplevel(void) {
   struct wlr_surface *focused_surface = server.seat->pointer_state.focused_surface;
   if(focused_surface == NULL) {
     return NULL;
   }
 
-  struct notwc_something *something = root_parent_of_surface(focused_surface);
-  if(something->type == NOTWC_TOPLEVEL) {
+  struct mwc_something *something = root_parent_of_surface(focused_surface);
+  if(something->type == MWC_TOPLEVEL) {
     return something->toplevel;
   }
 
@@ -558,7 +558,7 @@ get_pointer_focused_toplevel(void) {
 
 void
 cursor_jump_focused_toplevel(void) {
-  struct notwc_toplevel *toplevel = server.focused_toplevel;
+  struct mwc_toplevel *toplevel = server.focused_toplevel;
   if(toplevel == NULL) return;
 
   struct wlr_box geo_box = toplevel_get_geometry(toplevel);
@@ -568,7 +568,7 @@ cursor_jump_focused_toplevel(void) {
 }
 
 void
-toplevel_center_floating(struct notwc_toplevel *toplevel) {
+toplevel_center_floating(struct mwc_toplevel *toplevel) {
   assert(toplevel->floating);
 
   struct wlr_box output_box = toplevel->workspace->output->usable_area;
@@ -577,7 +577,7 @@ toplevel_center_floating(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_set_initial_state(struct notwc_toplevel *toplevel, uint32_t x, uint32_t y,
+toplevel_set_initial_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
                            uint32_t width, uint32_t height) {
   assert(!toplevel->mapped);
 
@@ -606,7 +606,7 @@ toplevel_set_initial_state(struct notwc_toplevel *toplevel, uint32_t x, uint32_t
 }
 
 void
-toplevel_set_pending_state(struct notwc_toplevel *toplevel, uint32_t x, uint32_t y,
+toplevel_set_pending_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
                            uint32_t width, uint32_t height) {
   assert(toplevel->mapped);
 
@@ -639,7 +639,7 @@ toplevel_set_pending_state(struct notwc_toplevel *toplevel, uint32_t x, uint32_t
 }
 
 void
-toplevel_commit(struct notwc_toplevel *toplevel) {
+toplevel_commit(struct mwc_toplevel *toplevel) {
   toplevel->dirty = false;
   toplevel->current = toplevel->pending;
 
@@ -660,13 +660,13 @@ toplevel_commit(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_set_fullscreen(struct notwc_toplevel *toplevel) {
+toplevel_set_fullscreen(struct mwc_toplevel *toplevel) {
   if(!toplevel->mapped) return;
 
   if(toplevel->workspace->fullscreen_toplevel != NULL) return;
 
-  struct notwc_workspace *workspace = toplevel->workspace;
-  struct notwc_output *output = workspace->output;
+  struct mwc_workspace *workspace = toplevel->workspace;
+  struct mwc_output *output = workspace->output;
 
   struct wlr_box output_box;
   wlr_output_layout_get_box(server.output_layout,
@@ -686,11 +686,11 @@ toplevel_set_fullscreen(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_unset_fullscreen(struct notwc_toplevel *toplevel) {
+toplevel_unset_fullscreen(struct mwc_toplevel *toplevel) {
   if(toplevel->workspace->fullscreen_toplevel != toplevel) return;
 
-  struct notwc_workspace *workspace = toplevel->workspace;
-  struct notwc_output *output = workspace->output;
+  struct mwc_workspace *workspace = toplevel->workspace;
+  struct mwc_output *output = workspace->output;
 
   workspace->fullscreen_toplevel = NULL;
   toplevel->fullscreen = false;
@@ -714,7 +714,7 @@ toplevel_unset_fullscreen(struct notwc_toplevel *toplevel) {
 void
 toplevel_move(void) {
   /* move the grabbed toplevel to the new position */
-  struct notwc_toplevel *toplevel = server.grabbed_toplevel;
+  struct mwc_toplevel *toplevel = server.grabbed_toplevel;
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
   int new_x = server.grabbed_toplevel_initial_box.x + (server.cursor->x - server.grab_x);
@@ -726,7 +726,7 @@ toplevel_move(void) {
 
 void
 toplevel_resize(void) {
-  struct notwc_toplevel *toplevel = server.grabbed_toplevel;
+  struct mwc_toplevel *toplevel = server.grabbed_toplevel;
 
   toplevel->resizing = true;
 
@@ -781,7 +781,7 @@ toplevel_resize(void) {
 
 void
 unfocus_focused_toplevel(void) {
-  struct notwc_toplevel *toplevel = server.focused_toplevel;
+  struct mwc_toplevel *toplevel = server.focused_toplevel;
   if(toplevel == NULL) return;
 
   server.focused_toplevel = NULL;
@@ -799,14 +799,14 @@ unfocus_focused_toplevel(void) {
 }
 
 void
-focus_toplevel(struct notwc_toplevel *toplevel) {
+focus_toplevel(struct mwc_toplevel *toplevel) {
   assert(toplevel != NULL);
   if(server.lock != NULL || server.exclusive) return;
 
   if(toplevel->workspace->fullscreen_toplevel != NULL
     && toplevel != toplevel->workspace->fullscreen_toplevel) return;
 
-  struct notwc_toplevel *prev_toplevel = server.focused_toplevel;
+  struct mwc_toplevel *prev_toplevel = server.focused_toplevel;
   if(prev_toplevel == toplevel) return;
 
   if(prev_toplevel != NULL) {
@@ -840,18 +840,18 @@ focus_toplevel(struct notwc_toplevel *toplevel) {
 }
 
 
-struct notwc_toplevel *
-toplevel_find_closest_floating_on_workspace(struct notwc_toplevel *toplevel,
-                                            enum notwc_direction direction) {
+struct mwc_toplevel *
+toplevel_find_closest_floating_on_workspace(struct mwc_toplevel *toplevel,
+                                            enum mwc_direction direction) {
   assert(toplevel->floating);
-  struct notwc_workspace *workspace = toplevel->workspace;
+  struct mwc_workspace *workspace = toplevel->workspace;
 
-  struct notwc_toplevel *min = NULL;
+  struct mwc_toplevel *min = NULL;
   uint32_t min_val = UINT32_MAX;
 
-  struct notwc_toplevel *t;
+  struct mwc_toplevel *t;
   switch(direction) {
-    case NOTWC_UP: {
+    case MWC_UP: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
         if(t == toplevel || Y(t) > Y(toplevel)) continue;
 
@@ -863,7 +863,7 @@ toplevel_find_closest_floating_on_workspace(struct notwc_toplevel *toplevel,
       }
       return min;
     }
-    case NOTWC_DOWN: {
+    case MWC_DOWN: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
         if(t == toplevel || Y(t) < Y(toplevel)) continue;
 
@@ -875,7 +875,7 @@ toplevel_find_closest_floating_on_workspace(struct notwc_toplevel *toplevel,
       }
       return min;
     }
-    case NOTWC_LEFT: {
+    case MWC_LEFT: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
         if(t == toplevel || X(t) > X(toplevel)) continue;
 
@@ -887,7 +887,7 @@ toplevel_find_closest_floating_on_workspace(struct notwc_toplevel *toplevel,
       }
       return min;
     }
-    case NOTWC_RIGHT: {
+    case MWC_RIGHT: {
       wl_list_for_each(t, &workspace->floating_toplevels, link) {
         if(t == toplevel || X(t) < X(toplevel)) continue;
 
@@ -902,14 +902,14 @@ toplevel_find_closest_floating_on_workspace(struct notwc_toplevel *toplevel,
   }
 }
 
-struct notwc_output *
-toplevel_get_primary_output(struct notwc_toplevel *toplevel) {
+struct mwc_output *
+toplevel_get_primary_output(struct mwc_toplevel *toplevel) {
   struct wlr_box intersection_box;
   struct wlr_box output_box;
   uint32_t max_area = 0;
-  struct notwc_output *max_area_output = NULL;
+  struct mwc_output *max_area_output = NULL;
 
-  struct notwc_output *o;
+  struct mwc_output *o;
   wl_list_for_each(o, &server.outputs, link) {
     wlr_output_layout_get_box(server.output_layout, o->wlr_output, &output_box);
     bool intersects =
@@ -924,7 +924,7 @@ toplevel_get_primary_output(struct notwc_toplevel *toplevel) {
 }
 
 void
-toplevel_get_actual_size(struct notwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width = toplevel->animation.running
     ? min(toplevel->animation.current.width, toplevel->current.width)
     : toplevel->current.width;
@@ -936,7 +936,7 @@ toplevel_get_actual_size(struct notwc_toplevel *toplevel, uint32_t *width, uint3
 
 uint32_t
 toplevel_get_closest_corner(struct wlr_cursor *cursor,
-                            struct notwc_toplevel *toplevel) {
+                            struct mwc_toplevel *toplevel) {
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
   uint32_t toplevel_x = toplevel->scene_tree->node.x + geometry.x;

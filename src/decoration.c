@@ -1,11 +1,11 @@
 #include "decoration.h"
 
-#include "notwc.h"
+#include "mwc.h"
 #include "config.h"
 
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 void
 server_handle_request_xdg_decoration(struct wl_listener *listener, void *data) {
   struct wlr_xdg_toplevel_decoration_v1 *decoration = data;

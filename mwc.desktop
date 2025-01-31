@@ -1,7 +1,7 @@
 [Desktop Entry]
-Name=notwc
+Name=mwc
 Comment=tiling wayland compositor based on wlroots
-Exec=notwc
+Exec=mwc
 Type=Application
-DesktopNames=notwc
+DesktopNames=mwc
 Keywords=tiling;wayland;compositor;

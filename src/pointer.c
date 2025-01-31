@@ -3,7 +3,7 @@
 #include "config.h"
 #include "keybinds.h"
 #include "ipc.h"
-#include "notwc.h"
+#include "mwc.h"
 #include "toplevel.h"
 #include "output.h"
 #include "something.h"
@@ -16,7 +16,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/util/log.h>
 
-extern struct notwc_server server;
+extern struct mwc_server server;
 
 void
 server_handle_new_pointer(struct wlr_input_device *device) {
@@ -99,7 +99,7 @@ pointer_device_configure(struct libinput_device *device) {
 void
 server_reset_cursor_mode() {
   /* reset the cursor mode to passthrough. */
-  server.cursor_mode = NOTWC_CURSOR_PASSTHROUGH;
+  server.cursor_mode = MWC_CURSOR_PASSTHROUGH;
   server.grabbed_toplevel->resizing = false;
   server.grabbed_toplevel = NULL;
 
@@ -116,7 +116,7 @@ cursor_handle_motion(uint32_t time) {
   /* get the output that the cursor is on currently */
   struct wlr_output *wlr_output = wlr_output_layout_output_at(
     server.output_layout, server.cursor->x, server.cursor->y);
-  struct notwc_output *output = wlr_output->data;
+  struct mwc_output *output = wlr_output->data;
 
   /* set global active workspace */
   if(output->active_workspace != server.active_workspace) {
@@ -124,10 +124,10 @@ cursor_handle_motion(uint32_t time) {
     ipc_broadcast_message(IPC_ACTIVE_WORKSPACE);
   }
 
-  if(server.cursor_mode == NOTWC_CURSOR_MOVE) {
+  if(server.cursor_mode == MWC_CURSOR_MOVE) {
     toplevel_move();
     return;
-  } else if (server.cursor_mode == NOTWC_CURSOR_RESIZE) {
+  } else if (server.cursor_mode == MWC_CURSOR_RESIZE) {
     toplevel_resize();
     return;
   }
@@ -140,7 +140,7 @@ cursor_handle_motion(uint32_t time) {
   double sx, sy;
   struct wlr_seat *seat = server.seat;
   struct wlr_surface *surface = NULL;
-  struct notwc_something *something =
+  struct mwc_something *something =
     something_at(server.cursor->x, server.cursor->y, &surface, &sx, &sy);
 
   if(something == NULL) {
@@ -151,11 +151,11 @@ cursor_handle_motion(uint32_t time) {
     return;
   }
 
-  if(something->type == NOTWC_TOPLEVEL) {
+  if(something->type == MWC_TOPLEVEL) {
     focus_toplevel(something->toplevel);
-  } else if(something->type == NOTWC_LAYER_SURFACE){
+  } else if(something->type == MWC_LAYER_SURFACE){
     focus_layer_surface(something->layer_surface);
-  } else if(something->type == NOTWC_LOCK_SURFACE) {
+  } else if(something->type == MWC_LOCK_SURFACE) {
     focus_lock_surface(something->lock_surface);
   }
 
@@ -211,8 +211,8 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
                                  event->button, event->state);
 
   if(event->state == WL_POINTER_BUTTON_STATE_RELEASED
-    && server.cursor_mode != NOTWC_CURSOR_PASSTHROUGH) {
-    struct notwc_output *primary_output = 
+    && server.cursor_mode != MWC_CURSOR_PASSTHROUGH) {
+    struct mwc_output *primary_output = 
       toplevel_get_primary_output(server.grabbed_toplevel);
 
     if(primary_output != server.grabbed_toplevel->workspace->output) {
