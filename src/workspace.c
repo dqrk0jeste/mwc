@@ -87,14 +87,18 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
   }
 
   /* and show this workspace's toplevels */
-  wl_list_for_each(t, &workspace->floating_toplevels, link) {
-    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
-  }
-  wl_list_for_each(t, &workspace->masters, link) {
-    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
-  }
-  wl_list_for_each(t, &workspace->slaves, link) {
-    wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+  if(workspace->fullscreen_toplevel != NULL) {
+    wlr_scene_node_set_enabled(&workspace->fullscreen_toplevel->scene_tree->node, true);
+  } else {
+    wl_list_for_each(t, &workspace->floating_toplevels, link) {
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+    wl_list_for_each(t, &workspace->masters, link) {
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+    wl_list_for_each(t, &workspace->slaves, link) {
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
   }
 
   if(server.active_workspace->output != workspace->output) {
@@ -161,7 +165,7 @@ toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
     }
   }
 
-  /* handle rendering */
+  /* handle presentation */
   if(toplevel->fullscreen) {
     old_workspace->fullscreen_toplevel = NULL;
     workspace->fullscreen_toplevel = toplevel;
@@ -170,6 +174,8 @@ toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
     wlr_output_layout_get_box(server.output_layout, workspace->output->wlr_output, &output_box);
     toplevel_set_pending_state(toplevel, output_box.x, output_box.y,
                                output_box.width, output_box.height);
+
+    /* TODO: when i get back to my dual monitor setup, handle this case of switching the monitor */
 
     if(toplevel->floating) {
       /* calculate where the toplevel should be placed after exiting fullscreen,

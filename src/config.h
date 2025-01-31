@@ -113,6 +113,7 @@ struct mwc_config {
   float active_border_color[4];
   double inactive_opacity;
   double active_opacity;
+  bool apply_opacity_when_fullscreen;
   uint32_t border_width;
   uint32_t outer_gaps;
   uint32_t inner_gaps;
