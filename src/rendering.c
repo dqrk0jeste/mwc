@@ -72,7 +72,6 @@ scene_buffer_get_something(struct wlr_scene_buffer *buffer,
   return scene_tree_get_something(buffer->node.parent, up_to);
 }
 
-/* this is bad, as it climbs up and down the tree a lot, but will do for testing */
 void
 iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
                            int sx, int sy, void *data) {

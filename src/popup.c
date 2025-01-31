@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_scene.h>
 #include <wlr/types/wlr_output_layout.h>
+#include <wlr/util/log.h>
 
 extern struct mwc_server server;
 
