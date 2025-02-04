@@ -6,6 +6,8 @@
 #include "mwc.h"
 #include "ipc.h"
 #include "keybinds.h"
+#include "layer_surface.h"
+#include "something.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -98,6 +100,16 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
     }
     wl_list_for_each(t, &workspace->slaves, link) {
       wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+  }
+
+  if(workspace->output->active_workspace->fullscreen_toplevel != NULL) {
+    struct mwc_layer_surface *l;
+    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
+    }
+    wl_list_for_each(l, &workspace->output->layers.top, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
     }
   }
 

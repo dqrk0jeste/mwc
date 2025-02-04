@@ -1,8 +1,9 @@
 #pragma once
-#include <scenefx/types/fx/blur_data.h>
-#include <scenefx/types/fx/corner_location.h>
 
 #include "helpers.h"
+
+#include <scenefx/types/fx/blur_data.h>
+#include <scenefx/types/fx/corner_location.h>
 
 #include <libinput.h>
 #include <regex.h>
