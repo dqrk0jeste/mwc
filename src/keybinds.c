@@ -126,7 +126,7 @@ keybind_move_focused_toplevel_to_workspace(void *data) {
 void
 keybind_resize_focused_toplevel(void *data) {
   struct mwc_toplevel *toplevel = get_pointer_focused_toplevel();
-  if(toplevel == NULL || !toplevel->floating) return;
+  if(toplevel == NULL || !toplevel->floating || toplevel->animation.running) return;
 
   uint32_t edges = toplevel_get_closest_corner(server.cursor, toplevel);
 
@@ -144,7 +144,7 @@ keybind_resize_focused_toplevel(void *data) {
   strcat(cursor_image, "corner");
 
   wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, cursor_image);
-  toplevel_start_move_resize(toplevel, MWC_CURSOR_RESIZE, edges);
+  toplevel_start_resize(toplevel, edges);
 }
 
 void
@@ -166,26 +166,28 @@ keybind_stop_resize_focused_toplevel(void *data) {
 void
 keybind_move_focused_toplevel(void *data) {
   struct mwc_toplevel *toplevel = get_pointer_focused_toplevel();
-  if(toplevel == NULL || !toplevel->floating || toplevel->fullscreen) return;
+  if(toplevel == NULL || toplevel->fullscreen || toplevel->animation.running) return;
 
   wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "hand1");
-  toplevel_start_move_resize(toplevel, MWC_CURSOR_MOVE, 0);
+  toplevel_start_move(toplevel);
 }
 
 void
 keybind_stop_move_focused_toplevel(void *data) {
   if(server.grabbed_toplevel == NULL) return;
 
-  struct mwc_output *primary_output = 
-    toplevel_get_primary_output(server.grabbed_toplevel);
-  if(primary_output != server.grabbed_toplevel->workspace->output) {
+  if(!server.grabbed_toplevel->floating) {
+    toplevel_tiled_insert_into_layout(server.grabbed_toplevel,
+                                      server.cursor->x, server.cursor->y);
+  } else {
+    struct mwc_output *primary_output = toplevel_get_primary_output(server.grabbed_toplevel);
     server.grabbed_toplevel->workspace = primary_output->active_workspace;
-    wl_list_remove(&server.grabbed_toplevel->link);
     wl_list_insert(&primary_output->active_workspace->floating_toplevels,
                    &server.grabbed_toplevel->link);
   }
 
   server_reset_cursor_mode();
+  layout_set_pending_state(server.active_workspace);
 }
 
 void

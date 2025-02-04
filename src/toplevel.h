@@ -87,8 +87,10 @@ void
 toplevel_handle_destroy(struct wl_listener *listener, void *data);
 
 void
-toplevel_start_move_resize(struct mwc_toplevel *toplevel,
-                           enum mwc_cursor_mode mode, uint32_t edges);
+toplevel_start_move(struct mwc_toplevel *toplevel);
+
+void
+toplevel_start_resize(struct mwc_toplevel *toplevel, uint32_t edges);
 
 void
 toplevel_handle_request_move(struct wl_listener *listener, void *data);
@@ -146,6 +148,9 @@ toplevel_move(void);
 
 void
 toplevel_resize(void);
+
+void
+toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y);
 
 void
 unfocus_focused_toplevel(void);

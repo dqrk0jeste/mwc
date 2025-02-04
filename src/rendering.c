@@ -255,8 +255,11 @@ toplevel_draw_frame(struct mwc_toplevel *toplevel) {
 
 void
 workspace_draw_frame(struct mwc_workspace *workspace) {
-  bool need_more_frames = false;
+  if(server.grabbed_toplevel != NULL) {
+    toplevel_draw_frame(server.grabbed_toplevel);
+  }
 
+  bool need_more_frames = false;
   struct mwc_toplevel *t;
   if(workspace->fullscreen_toplevel != NULL) {
     if(toplevel_draw_frame(workspace->fullscreen_toplevel)) {

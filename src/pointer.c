@@ -102,6 +102,7 @@ server_reset_cursor_mode() {
   server.cursor_mode = MWC_CURSOR_PASSTHROUGH;
   server.grabbed_toplevel->resizing = false;
   server.grabbed_toplevel = NULL;
+  server.client_driven_move_resize = false;
 
   if(server.client_cursor.surface != NULL) {
     wlr_cursor_set_surface(server.cursor, server.client_cursor.surface,
@@ -171,7 +172,6 @@ server_handle_cursor_motion(struct wl_listener *listener, void *data) {
   cursor_handle_motion(event->time_msec);
 }
 
-
 void
 server_handle_cursor_motion_absolute(
   struct wl_listener *listener, void *data) {
@@ -206,12 +206,14 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
       return;
     }
   }
+
   /* notify the client with pointer focus that a button press has occurred */
   wlr_seat_pointer_notify_button(server.seat, event->time_msec,
                                  event->button, event->state);
 
   if(event->state == WL_POINTER_BUTTON_STATE_RELEASED
-    && server.cursor_mode != MWC_CURSOR_PASSTHROUGH) {
+     && server.cursor_mode != MWC_CURSOR_PASSTHROUGH
+     && server.client_driven_move_resize) {
     struct mwc_output *primary_output = 
       toplevel_get_primary_output(server.grabbed_toplevel);
 
@@ -220,6 +222,12 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
       wl_list_remove(&server.grabbed_toplevel->link);
       wl_list_insert(&primary_output->active_workspace->floating_toplevels,
                      &server.grabbed_toplevel->link);
+    }
+
+    if(!server.grabbed_toplevel->floating) {
+      toplevel_tiled_insert_into_layout(server.grabbed_toplevel, server.cursor->x, server.cursor->y);
+    } else {
+      wl_list_insert(server.active_workspace->floating_toplevels.next, &server.grabbed_toplevel->link);
     }
 
     server_reset_cursor_mode();
