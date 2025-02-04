@@ -331,23 +331,46 @@ toplevel_get_geometry(struct mwc_toplevel *toplevel) {
 }
 
 void
-toplevel_start_move_resize(struct mwc_toplevel *toplevel,
-                           enum mwc_cursor_mode mode, uint32_t edges) {
-  if(toplevel == NULL) {
-    return;
-  }
-
+toplevel_start_move(struct mwc_toplevel *toplevel) {
   server.grabbed_toplevel = toplevel;
-  server.cursor_mode = mode;
+  server.cursor_mode = MWC_CURSOR_MOVE;
 
   server.grab_x = server.cursor->x;
   server.grab_y = server.cursor->y;
 
-  struct wlr_box geo_box = toplevel_get_geometry(toplevel);
-  server.grabbed_toplevel_initial_box = geo_box;
-  server.grabbed_toplevel_initial_box.x += toplevel->scene_tree->node.x;
-  server.grabbed_toplevel_initial_box.y += toplevel->scene_tree->node.y;
+  struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
+  server.grabbed_toplevel_initial_box = toplevel->current;
+  server.grabbed_toplevel_initial_box.x += geometry.x;
+  server.grabbed_toplevel_initial_box.y += geometry.y;
+
+  wl_list_remove(&toplevel->link);
+
+  if(toplevel_is_master(toplevel)
+     && wl_list_length(&toplevel->workspace->masters) > server.config->master_count) {
+    struct mwc_toplevel *last = wl_container_of(toplevel->workspace->masters.prev, last, link);
+    wl_list_remove(&last->link);
+    wl_list_insert(toplevel->workspace->slaves.prev, &last->link);
+  } else if(wl_list_empty(&toplevel->workspace->masters)) {
+    struct mwc_toplevel *last = wl_container_of(toplevel->workspace->slaves.prev, last, link);
+    wl_list_remove(&last->link);
+    wl_list_insert(toplevel->workspace->masters.prev, &last->link);
+  }
+
+  if(!toplevel->floating) {
+    layout_set_pending_state(toplevel->workspace);
+  }
+}
+
+void
+toplevel_start_resize(struct mwc_toplevel *toplevel, uint32_t edges) {
+  server.grabbed_toplevel = toplevel;
+  server.cursor_mode = MWC_CURSOR_RESIZE;
+
+  server.grab_x = server.cursor->x;
+  server.grab_y = server.cursor->y;
+
+  server.grabbed_toplevel_initial_box = toplevel->current;
   server.resize_edges = edges;
 }
 
@@ -359,9 +382,10 @@ toplevel_handle_request_move(struct wl_listener *listener, void *data) {
    * provided serial against a list of button press serials sent to this
    * client, to prevent the client from requesting this whenever they want. */
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_move);
-  if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()) return;
+  if(toplevel != get_pointer_focused_toplevel() || toplevel->animation.running) return;
 
-  toplevel_start_move_resize(toplevel, MWC_CURSOR_MOVE, 0);
+  server.client_driven_move_resize = true;
+  toplevel_start_move(toplevel);
 }
 
 void
@@ -374,9 +398,11 @@ toplevel_handle_request_resize(struct wl_listener *listener, void *data) {
   struct wlr_xdg_toplevel_resize_event *event = data;
 
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_resize);
-  if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()) return;
+  if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()
+     || toplevel->animation.running) return;
 
-  toplevel_start_move_resize(toplevel, MWC_CURSOR_RESIZE, event->edges);
+  server.client_driven_move_resize = true;
+  toplevel_start_resize(toplevel, event->edges);
 }
 
 void
@@ -765,11 +791,11 @@ toplevel_move(void) {
   struct mwc_toplevel *toplevel = server.grabbed_toplevel;
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
-  int new_x = server.grabbed_toplevel_initial_box.x + (server.cursor->x - server.grab_x);
-  int new_y = server.grabbed_toplevel_initial_box.y + (server.cursor->y - server.grab_y);
+  int32_t new_x = server.grabbed_toplevel_initial_box.x + (server.cursor->x - server.grab_x);
+  int32_t new_y = server.grabbed_toplevel_initial_box.y + (server.cursor->y - server.grab_y);
 
   toplevel_set_pending_state(toplevel, new_x - geometry.x, new_y - geometry.y,
-                             geometry.width, geometry.height);
+                             toplevel->current.width, toplevel->current.height);
 }
 
 void
@@ -1011,3 +1037,26 @@ toplevel_get_closest_corner(struct wlr_cursor *cursor,
   return edges;
 }
 
+void
+toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y) {
+  struct mwc_workspace *workspace = server.active_workspace;
+  struct mwc_output *output = workspace->output; 
+
+  toplevel->workspace = workspace;
+
+  struct mwc_toplevel *under_cursor = layout_toplevel_at(workspace, x, y);
+  assert(under_cursor != NULL);
+
+  wl_list_insert(under_cursor->link.prev, &toplevel->link);
+
+  if(toplevel_is_master(under_cursor)
+     && wl_list_length(&workspace->masters) > server.config->master_count) {
+    struct mwc_toplevel *last = wl_container_of(workspace->masters.prev, last, link);
+    wl_list_remove(&last->link);
+    wl_list_insert(workspace->slaves.prev, &last->link);
+  } else if(wl_list_empty(&workspace->masters)) {
+    struct mwc_toplevel *last = wl_container_of(workspace->slaves.prev, last, link);
+    wl_list_remove(&last->link);
+    wl_list_insert(workspace->masters.prev, &last->link);
+  }
+}
