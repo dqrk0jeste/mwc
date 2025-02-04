@@ -35,6 +35,25 @@ hex_to_unsigned_decimal(char *hex, size_t len) {
   return result;
 }
 
+bool
+parse_color_rgba_or_hex(char **args, size_t arg_count, float *dest) {
+  if(arg_count == 4) {
+    dest[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
+    dest[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
+    dest[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
+    dest[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+  } else if(strlen(args[0]) == 8) {
+    dest[0] = clamp(hex_to_unsigned_decimal(args[0] + 0, 2), 0, 255) / 255.0;
+    dest[1] = clamp(hex_to_unsigned_decimal(args[0] + 2, 2), 0, 255) / 255.0;
+    dest[2] = clamp(hex_to_unsigned_decimal(args[0] + 4, 2), 0, 255) / 255.0;
+    dest[3] = clamp(hex_to_unsigned_decimal(args[0] + 6, 2), 0, 255) / 255.0;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
 struct vec2
 calculate_animation_curve_at(struct mwc_config *c, double t) {
   struct vec2 point;
@@ -494,28 +513,13 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
 
     c->cursor_size = clamp(atoi(args[0]), 0, INT_MAX);
   } else if(strcmp(keyword, "inactive_border_color") == 0) {
-    if(arg_count != 1 && arg_count != 4) goto invalid;
-
-    if(arg_count == 4) {
-      c->inactive_border_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
-      c->inactive_border_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
-      c->inactive_border_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
-      c->inactive_border_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
-    } else if(strlen(args[0]) == 8) {
-      c->inactive_border_color[0] = hex_to_unsigned_decimal(args[0] + 0, 2);
-      c->inactive_border_color[1] = hex_to_unsigned_decimal(args[0] + 2, 2);
-      c->inactive_border_color[2] = hex_to_unsigned_decimal(args[0] + 4, 2);
-      c->inactive_border_color[3] = hex_to_unsigned_decimal(args[0] + 6, 2);
-    } else {
+    if(!parse_color_rgba_or_hex(args, arg_count, c->inactive_border_color)) {
       goto invalid;
     }
   } else if(strcmp(keyword, "active_border_color") == 0) {
-    if(arg_count < 4) goto invalid;
-
-    c->active_border_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
-    c->active_border_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
-    c->active_border_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
-    c->active_border_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+    if(!parse_color_rgba_or_hex(args, arg_count, c->active_border_color)) {
+      goto invalid;
+    }
   } else if(strcmp(keyword, "output") == 0) {
     if(arg_count < 6) goto invalid;
 
@@ -684,12 +688,9 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     c->shadows_position.value.x = atoi(args[0]);
     c->shadows_position.value.y = atoi(args[1]);
   } else if(strcmp(keyword, "shadows_color") == 0) {
-    if(arg_count < 4) goto invalid;
-
-    c->shadows_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
-    c->shadows_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
-    c->shadows_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
-    c->shadows_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+    if(!parse_color_rgba_or_hex(args, arg_count, c->shadows_color)) {
+      goto invalid;
+    }
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
