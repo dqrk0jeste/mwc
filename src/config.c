@@ -16,6 +16,25 @@
 
 #define clamp(v, a, b) (max((a), min((v), (b))))
 
+/* assumes valid hex */
+uint32_t
+hex_to_unsigned_decimal(char *hex, size_t len) {
+  uint32_t result = 0;
+  for(size_t i = 0; i < len; i++) {
+    result *= 16;
+    char current = hex[i];
+    if(current >= '0' && current <= '9') {
+      result += (current - '0');
+    } else if (current >= 'a' && current <= 'f'){
+      result += (current - 'a') + 10;
+    } else if (current >= 'A' && current <= 'F'){
+      result += (current - 'A') + 10;
+    } 
+  }
+
+  return result;
+}
+
 struct vec2
 calculate_animation_curve_at(struct mwc_config *c, double t) {
   struct vec2 point;
@@ -475,12 +494,21 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
 
     c->cursor_size = clamp(atoi(args[0]), 0, INT_MAX);
   } else if(strcmp(keyword, "inactive_border_color") == 0) {
-    if(arg_count < 4) goto invalid;
+    if(arg_count != 1 && arg_count != 4) goto invalid;
 
-    c->inactive_border_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
-    c->inactive_border_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
-    c->inactive_border_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
-    c->inactive_border_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+    if(arg_count == 4) {
+      c->inactive_border_color[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
+      c->inactive_border_color[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
+      c->inactive_border_color[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
+      c->inactive_border_color[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+    } else if(strlen(args[0]) == 8) {
+      c->inactive_border_color[0] = hex_to_unsigned_decimal(args[0] + 0, 2);
+      c->inactive_border_color[1] = hex_to_unsigned_decimal(args[0] + 2, 2);
+      c->inactive_border_color[2] = hex_to_unsigned_decimal(args[0] + 4, 2);
+      c->inactive_border_color[3] = hex_to_unsigned_decimal(args[0] + 6, 2);
+    } else {
+      goto invalid;
+    }
   } else if(strcmp(keyword, "active_border_color") == 0) {
     if(arg_count < 4) goto invalid;
 
