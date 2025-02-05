@@ -3,12 +3,14 @@
 #include "config.h"
 #include "keybinds.h"
 #include "ipc.h"
+#include "layout.h"
 #include "mwc.h"
 #include "toplevel.h"
 #include "output.h"
 #include "something.h"
 #include "dnd.h"
 #include "layer_surface.h"
+#include "workspace.h"
 
 #include <libinput.h>
 #include <wayland-util.h>
@@ -231,6 +233,7 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
     }
 
     server_reset_cursor_mode();
+    layout_set_pending_state(server.active_workspace);
   }
 }
 

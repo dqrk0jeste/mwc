@@ -144,6 +144,8 @@ keybind_resize_focused_toplevel(void *data) {
   strcat(cursor_image, "corner");
 
   wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, cursor_image);
+
+  server.client_driven_move_resize = false;
   toplevel_start_resize(toplevel, edges);
 }
 
@@ -169,6 +171,8 @@ keybind_move_focused_toplevel(void *data) {
   if(toplevel == NULL || toplevel->fullscreen || toplevel->animation.running) return;
 
   wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "hand1");
+
+  server.client_driven_move_resize = false;
   toplevel_start_move(toplevel);
 }
 

@@ -4,7 +4,6 @@
 
 #include "rendering.h"
 #include "mwc.h"
-#include "pointer.h"
 #include "config.h"
 #include "something.h"
 

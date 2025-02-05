@@ -349,11 +349,11 @@ focus_output(struct mwc_output *output, enum mwc_direction side) {
                                                        master, side);
     /* if there are no tiled toplevels we try floating */
     if(focus_next == NULL) {
-      focus_next = layout_find_closest_floating_toplevel(output->active_workspace,
+      focus_next = workspace_find_closest_floating_toplevel(output->active_workspace,
                                                             side);
     }
   } else {
-    focus_next = layout_find_closest_floating_toplevel(output->active_workspace,
+    focus_next = workspace_find_closest_floating_toplevel(output->active_workspace,
                                                           side);
     /* if there are no floating toplevels we try tiled */
     if(focus_next == NULL) {

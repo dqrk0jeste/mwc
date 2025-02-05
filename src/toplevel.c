@@ -1,3 +1,4 @@
+#include <libudev.h>
 #include <scenefx/types/wlr_scene.h>
 
 #include "toplevel.h"
@@ -83,7 +84,7 @@ server_handle_new_toplevel(struct wl_listener *listener, void *data) {
 void
 toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
   /* when an xdg_surface performs an initial commit, the compositor must
-     * reply with a configure so the client can map the surface. */
+   * reply with a configure so the client can map the surface. */
   toplevel->floating = toplevel_should_float(toplevel);
 
   if(toplevel->floating) {
@@ -93,7 +94,7 @@ toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
     toplevel_floating_size(toplevel, &width, &height);
     toplevel_set_initial_state(toplevel, UINT32_MAX, UINT32_MAX, width, height);
   } else if(wl_list_length(&toplevel->workspace->masters)
-    < server.config->master_count) {
+            < server.config->master_count) {
     wl_list_insert(toplevel->workspace->masters.prev, &toplevel->link);
     layout_set_pending_state(toplevel->workspace);
   } else {
@@ -103,11 +104,11 @@ toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
 
   if(!toplevel->floating && toplevel->workspace->fullscreen_toplevel != NULL) {
     /* layout_set_pending_state() does not send any configures if there is
-       * a fullscreen toplevel on the workspace, but we need to send something
-       * in order to respect the protocol. we dont really care,
-       * as it is not going to be shown anyway
-       * note: using just 0, 0, 0, 0 caused the toplevel to become unresponsive, because wlr_scene
-       * wouldnt send frame done events. we fix this by setting the position to something on the current output */
+     * a fullscreen toplevel on the workspace, but we need to send something
+     * in order to respect the protocol. we dont really care,
+     * as it is not going to be shown anyway
+     * note: using just 0, 0, 0, 0 caused the toplevel to become unresponsive, because wlr_scene
+     * wouldnt send frame done events. we fix this by setting the position to something on the current output */
     struct mwc_output *output = toplevel->workspace->output;
     toplevel_set_initial_state(toplevel, output->usable_area.x, output->usable_area.y, 0, 0);
   }
@@ -211,14 +212,28 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   struct mwc_workspace *workspace = toplevel->workspace;
 
   /* reset the cursor mode if the grabbed toplevel was unmapped. */
-  if(toplevel == server.grabbed_toplevel) {
-    server_reset_cursor_mode();
-  }
-
   /* if its the one focus should be returned to, remove it */
   if(toplevel == server.prev_focused) {
     server.prev_focused = NULL;
   }
+
+  if(toplevel == server.grabbed_toplevel) {
+    server_reset_cursor_mode();
+    
+    if(toplevel->floating && !wl_list_empty(&workspace->floating_toplevels)) {
+      struct mwc_toplevel *t = wl_container_of(workspace->floating_toplevels.next, t, link);
+      focus_toplevel(t);
+    } else if(!wl_list_empty(&workspace->masters)) {
+      struct mwc_toplevel *t = wl_container_of(workspace->masters.next, t, link);
+      focus_toplevel(t);
+    } else {
+      server.focused_toplevel = NULL;
+      ipc_broadcast_message(IPC_ACTIVE_TOPLEVEL);
+    }
+
+    return;
+  }
+
 
   if(toplevel == workspace->fullscreen_toplevel) {
     workspace->fullscreen_toplevel = NULL;
@@ -332,38 +347,35 @@ toplevel_get_geometry(struct mwc_toplevel *toplevel) {
 
 void
 toplevel_start_move(struct mwc_toplevel *toplevel) {
+  if(server.grabbed_toplevel != NULL) return;
+
   server.grabbed_toplevel = toplevel;
   server.cursor_mode = MWC_CURSOR_MOVE;
 
   server.grab_x = server.cursor->x;
   server.grab_y = server.cursor->y;
 
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
-
   server.grabbed_toplevel_initial_box = toplevel->current;
-  server.grabbed_toplevel_initial_box.x += geometry.x;
-  server.grabbed_toplevel_initial_box.y += geometry.y;
 
-  wl_list_remove(&toplevel->link);
+  if(toplevel->floating) {
+    wl_list_remove(&toplevel->link);
+  } else {
+    bool is_master = toplevel_is_master(toplevel);
+    wl_list_remove(&toplevel->link);
+    if(is_master && !wl_list_empty(&toplevel->workspace->slaves)) {
+      struct mwc_toplevel *last = wl_container_of(toplevel->workspace->slaves.prev, last, link);
+      wl_list_remove(&last->link);
+      wl_list_insert(toplevel->workspace->masters.prev, &last->link);
+    }
 
-  if(toplevel_is_master(toplevel)
-     && wl_list_length(&toplevel->workspace->masters) > server.config->master_count) {
-    struct mwc_toplevel *last = wl_container_of(toplevel->workspace->masters.prev, last, link);
-    wl_list_remove(&last->link);
-    wl_list_insert(toplevel->workspace->slaves.prev, &last->link);
-  } else if(wl_list_empty(&toplevel->workspace->masters)) {
-    struct mwc_toplevel *last = wl_container_of(toplevel->workspace->slaves.prev, last, link);
-    wl_list_remove(&last->link);
-    wl_list_insert(toplevel->workspace->masters.prev, &last->link);
-  }
-
-  if(!toplevel->floating) {
     layout_set_pending_state(toplevel->workspace);
   }
 }
 
 void
 toplevel_start_resize(struct mwc_toplevel *toplevel, uint32_t edges) {
+  if(server.grabbed_toplevel != NULL) return;
+
   server.grabbed_toplevel = toplevel;
   server.cursor_mode = MWC_CURSOR_RESIZE;
 
@@ -789,12 +801,11 @@ void
 toplevel_move(void) {
   /* move the grabbed toplevel to the new position */
   struct mwc_toplevel *toplevel = server.grabbed_toplevel;
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
   int32_t new_x = server.grabbed_toplevel_initial_box.x + (server.cursor->x - server.grab_x);
   int32_t new_y = server.grabbed_toplevel_initial_box.y + (server.cursor->y - server.grab_y);
 
-  toplevel_set_pending_state(toplevel, new_x - geometry.x, new_y - geometry.y,
+  toplevel_set_pending_state(toplevel, new_x, new_y,
                              toplevel->current.width, toplevel->current.height);
 }
 
@@ -875,8 +886,10 @@ unfocus_focused_toplevel(void) {
 void
 focus_toplevel(struct mwc_toplevel *toplevel) {
   assert(toplevel != NULL);
-  if(server.lock != NULL || server.exclusive) return;
 
+  if(server.lock != NULL) return;
+  if(server.exclusive) return;
+  if(server.grabbed_toplevel != NULL) return;
   if(toplevel->workspace->fullscreen_toplevel != NULL
     && toplevel != toplevel->workspace->fullscreen_toplevel) return;
 
@@ -1045,18 +1058,35 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
   toplevel->workspace = workspace;
 
   struct mwc_toplevel *under_cursor = layout_toplevel_at(workspace, x, y);
-  assert(under_cursor != NULL);
 
-  wl_list_insert(under_cursor->link.prev, &toplevel->link);
+  if(under_cursor == NULL) {
+    wl_list_insert(workspace->masters.next, &toplevel->link);
+  } else {
+    bool on_left_side = x <= under_cursor->current.x + under_cursor->current.width / 2;
+    bool on_top_side = y <= under_cursor->current.y + under_cursor->current.height / 2;
+    bool under_cursor_is_master = toplevel_is_master(under_cursor);
 
-  if(toplevel_is_master(under_cursor)
-     && wl_list_length(&workspace->masters) > server.config->master_count) {
-    struct mwc_toplevel *last = wl_container_of(workspace->masters.prev, last, link);
-    wl_list_remove(&last->link);
-    wl_list_insert(workspace->slaves.prev, &last->link);
-  } else if(wl_list_empty(&workspace->masters)) {
-    struct mwc_toplevel *last = wl_container_of(workspace->slaves.prev, last, link);
-    wl_list_remove(&last->link);
-    wl_list_insert(workspace->masters.prev, &last->link);
+    /* we insert it before under_cursor if either:
+   *   - its last master
+   *   - cursor is on left (top) */
+    if((under_cursor_is_master && &under_cursor->link == workspace->masters.prev)
+       || under_cursor_is_master && on_left_side
+       || !under_cursor_is_master && on_top_side) {
+      wl_list_insert(under_cursor->link.prev, &toplevel->link);
+    } else {
+      wl_list_insert(&under_cursor->link, &toplevel->link);
+    }
+
+    if(toplevel_is_master(under_cursor)
+      && wl_list_length(&workspace->masters) > server.config->master_count) {
+      struct mwc_toplevel *last = wl_container_of(workspace->masters.prev, last, link);
+      wl_list_remove(&last->link);
+      wl_list_insert(workspace->slaves.prev, &last->link);
+    } else if(wl_list_empty(&workspace->masters)) {
+      struct mwc_toplevel *last = wl_container_of(workspace->slaves.prev, last, link);
+      wl_list_remove(&last->link);
+      wl_list_insert(workspace->masters.prev, &last->link);
+    }
   }
+
 }
