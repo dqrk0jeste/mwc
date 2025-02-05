@@ -12,8 +12,8 @@
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
 
-#define max(a, b) (a) > (b) ? (a) : (b)
-#define min(a, b) (a) < (b) ? (a) : (b)
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 #define STRING_INITIAL_LENGTH 64
 
@@ -83,7 +83,7 @@ struct mwc_server {
 	double grab_x, grab_y;
 	struct wlr_box grabbed_toplevel_initial_box;
 	uint32_t resize_edges;
-	uint32_t client_driven_move_resize;
+	bool client_driven_move_resize;
 
   /* keeps state about the client cursor when the server initialized move/resize */
   struct {

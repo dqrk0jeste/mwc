@@ -74,7 +74,7 @@ scene_buffer_get_something(struct wlr_scene_buffer *buffer,
 
 void
 iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
-                           int sx, int sy, void *data) {
+                                int sx, int sy, void *data) {
   struct mwc_toplevel *toplevel = data;
   struct mwc_something *something = scene_buffer_get_something(buffer, toplevel->scene_tree);
   assert(something != NULL);
@@ -100,11 +100,8 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   }
 
   uint32_t border_radius = toplevel->fullscreen ? 0 : server.config->border_radius;
-
-  if(server.config->border_radius > 0) {
-    wlr_scene_buffer_set_corner_radius(buffer, border_radius,
-                                       server.config->border_radius_location);
-  }
+  wlr_scene_buffer_set_corner_radius(buffer, border_radius,
+                                     server.config->border_radius_location);
 }
 
 void
@@ -191,6 +188,11 @@ toplevel_animation_next_tick(struct mwc_toplevel *toplevel) {
 
 void
 toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
+  if(toplevel->shadow != NULL && toplevel->fullscreen) {
+    wlr_scene_node_set_enabled(&toplevel->shadow->node, false);
+    return;
+  }
+
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 

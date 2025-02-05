@@ -56,14 +56,10 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
 
   /* if it is an already active on its output, just switch to it */
   if(workspace == workspace->output->active_workspace) {
-    server.active_workspace = workspace;
-    cursor_jump_output(workspace->output);
-    ipc_broadcast_message(IPC_ACTIVE_WORKSPACE);
-    /* we dont want to keep focus only if it is going to be under a fullscreen toplevel */
-    if(workspace->fullscreen_toplevel != NULL) {
+    if(keep_focus) {
+      /* do nothing */
+    } else if(workspace->fullscreen_toplevel != NULL) {
       focus_toplevel(workspace->fullscreen_toplevel);
-    } else if(keep_focus) {
-      return;
     } else if(!wl_list_empty(&workspace->masters)) {
       struct mwc_toplevel *t = wl_container_of(workspace->masters.next, t, link);
       focus_toplevel(t);
@@ -73,24 +69,37 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
     } else {
       unfocus_focused_toplevel();
     }
+
+    server.active_workspace = workspace;
+    cursor_jump_output(workspace->output);
+    ipc_broadcast_message(IPC_ACTIVE_WORKSPACE);
     return;
   }
 
+  struct mwc_workspace *prev_workspace = server.active_workspace;
+
   /* else remove all the toplevels on that workspace */
   struct mwc_toplevel *t;
-  wl_list_for_each(t, &workspace->output->active_workspace->floating_toplevels, link) {
+  wl_list_for_each(t, &prev_workspace->floating_toplevels, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
-  wl_list_for_each(t, &workspace->output->active_workspace->masters, link) {
+  wl_list_for_each(t, &prev_workspace->masters, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
-  wl_list_for_each(t, &workspace->output->active_workspace->slaves, link) {
+  wl_list_for_each(t, &prev_workspace->slaves, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
 
   /* and show this workspace's toplevels */
   if(workspace->fullscreen_toplevel != NULL) {
     wlr_scene_node_set_enabled(&workspace->fullscreen_toplevel->scene_tree->node, true);
+    struct mwc_layer_surface *l;
+    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, false);
+    }
+    wl_list_for_each(l, &workspace->output->layers.top, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, false);
+    }
   } else {
     wl_list_for_each(t, &workspace->floating_toplevels, link) {
       wlr_scene_node_set_enabled(&t->scene_tree->node, true);
@@ -103,27 +112,18 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
     }
   }
 
-  if(workspace->output->active_workspace->fullscreen_toplevel != NULL) {
-    struct mwc_layer_surface *l;
-    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
-    }
-    wl_list_for_each(l, &workspace->output->layers.top, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
-    }
-  }
-
   if(server.active_workspace->output != workspace->output) {
     cursor_jump_output(workspace->output);
   }
 
   server.active_workspace = workspace;
   workspace->output->active_workspace = workspace;
-
   ipc_broadcast_message(IPC_ACTIVE_WORKSPACE);
 
   /* same as above */
-  if(workspace->fullscreen_toplevel != NULL) {
+  if(keep_focus) {
+    /* do nothing */
+  } else if(workspace->fullscreen_toplevel != NULL) {
     focus_toplevel(workspace->fullscreen_toplevel);
   } else if(keep_focus) {
     return;
@@ -187,7 +187,13 @@ toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
     toplevel_set_pending_state(toplevel, output_box.x, output_box.y,
                                output_box.width, output_box.height);
 
-    /* TODO: when i get back to my dual monitor setup, handle this case of switching the monitor */
+    struct mwc_layer_surface *l;
+    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
+    }
+    wl_list_for_each(l, &workspace->output->layers.top, link) {
+      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
+    }
 
     if(toplevel->floating) {
       /* calculate where the toplevel should be placed after exiting fullscreen,
@@ -239,5 +245,39 @@ toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
 
   /* change active workspace */
   change_workspace(workspace, true);
+}
+
+struct mwc_toplevel *
+workspace_find_closest_floating_toplevel(struct mwc_workspace *workspace,
+                                         enum mwc_direction side) {
+  struct wl_list *l = workspace->floating_toplevels.next;
+  if(l == &workspace->floating_toplevels) return NULL;
+
+  struct mwc_toplevel *t = wl_container_of(l, t, link);
+
+  struct mwc_toplevel *min_x = t;
+  struct mwc_toplevel *max_x = t;
+  struct mwc_toplevel *min_y = t;
+  struct mwc_toplevel *max_y = t;
+
+  wl_list_for_each(t, &workspace->floating_toplevels, link) {
+    if(X(t) < X(min_x)) {
+      min_x = t;
+    } else if(X(t) > X(max_x)) {
+      max_x = t;
+    }
+    if(Y(t) < Y(min_y)) {
+      min_y = t;
+    } else if(Y(t) > Y(max_y)) {
+      max_y = t;
+    }
+  }
+
+  switch(side) {
+    case MWC_UP: return min_y;
+    case MWC_DOWN: return max_y;
+    case MWC_LEFT: return min_x;
+    case MWC_RIGHT: return max_x;
+  }
 }
 

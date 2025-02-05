@@ -4,6 +4,7 @@
 #include "config.h"
 #include "toplevel.h"
 #include "wlr/util/box.h"
+#include "wlr/util/log.h"
 
 #include <stdint.h>
 #include <wayland-util.h>
@@ -190,40 +191,6 @@ layout_find_closest_tiled_toplevel(struct mwc_workspace *workspace, bool master,
 }
 
 struct mwc_toplevel *
-layout_find_closest_floating_toplevel(struct mwc_workspace *workspace,
-                                      enum mwc_direction side) {
-  struct wl_list *l = workspace->floating_toplevels.next;
-  if(l == &workspace->floating_toplevels) return NULL;
-
-  struct mwc_toplevel *t = wl_container_of(l, t, link);
-
-  struct mwc_toplevel *min_x = t;
-  struct mwc_toplevel *max_x = t;
-  struct mwc_toplevel *min_y = t;
-  struct mwc_toplevel *max_y = t;
-
-  wl_list_for_each(t, &workspace->floating_toplevels, link) {
-    if(X(t) < X(min_x)) {
-      min_x = t;
-    } else if(X(t) > X(max_x)) {
-      max_x = t;
-    }
-    if(Y(t) < Y(min_y)) {
-      min_y = t;
-    } else if(Y(t) > Y(max_y)) {
-      max_y = t;
-    }
-  }
-
-  switch(side) {
-    case MWC_UP: return min_y;
-    case MWC_DOWN: return max_y;
-    case MWC_LEFT: return min_x;
-    case MWC_RIGHT: return max_x;
-  }
-}
-
-struct mwc_toplevel *
 layout_toplevel_at(struct mwc_workspace *workspace, uint32_t x, uint32_t y) {
   struct mwc_toplevel *t;
   wl_list_for_each(t, &workspace->masters, link) {
@@ -235,19 +202,15 @@ layout_toplevel_at(struct mwc_workspace *workspace, uint32_t x, uint32_t y) {
       ? server.config->outer_gaps + server.config->border_width
       : server.config->inner_gaps + server.config->border_width;
 
-    uint32_t decorations_top = t->link.prev == &workspace->masters
-      ? server.config->outer_gaps + server.config->border_width
-      : server.config->inner_gaps + server.config->border_width;
+    uint32_t decorations_top = server.config->outer_gaps + server.config->border_width;
 
-    uint32_t decorations_bottom = t->link.next == &workspace->masters
-      ? server.config->outer_gaps + server.config->border_width
-      : server.config->inner_gaps + server.config->border_width;
+    uint32_t decorations_bottom = server.config->outer_gaps + server.config->border_width;
 
     struct wlr_box box = {
       .x = t->current.x - decorations_left,
       .y = t->current.y - decorations_top,
-      .width = t->current.width + decorations_left + decorations_right,
-      .height = t->current.height + decorations_top + decorations_bottom,
+      .width = t->current.width + decorations_left + decorations_right + 1,
+      .height = t->current.height + decorations_top + decorations_bottom + 1,
     };
 
     if(wlr_box_contains_point(&box, x, y)) {
@@ -270,8 +233,8 @@ layout_toplevel_at(struct mwc_workspace *workspace, uint32_t x, uint32_t y) {
     struct wlr_box box = {
       .x = t->current.x - decorations_left,
       .y = t->current.y - decorations_top,
-      .width = t->current.width + decorations_left + decorations_right,
-      .height = t->current.height + decorations_top + decorations_bottom,
+      .width = t->current.width + decorations_left + decorations_right + 1,
+      .height = t->current.height + decorations_top + decorations_bottom + 1,
     };
 
     if(wlr_box_contains_point(&box, x, y)) {
