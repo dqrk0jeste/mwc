@@ -49,3 +49,6 @@ layer_get_scene(enum zwlr_layer_shell_v1_layer layer);
 
 struct wl_list *
 layer_get_list(struct mwc_output *output, enum zwlr_layer_shell_v1_layer layer);
+
+void
+layers_under_fullscreen_set_enabled(struct mwc_output *output, bool enable);

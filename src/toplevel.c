@@ -170,8 +170,15 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
   struct wlr_scene_tree *tree = toplevel->floating ? server.floating_tree : server.tiled_tree;
   toplevel->scene_tree = wlr_scene_xdg_surface_create(tree, toplevel->xdg_toplevel->base);
   /* output at 0, 0 would get this toplevel flashed if its on some other output,
-   * so we disable it until the next frame */
-  wlr_scene_node_set_enabled(&toplevel->scene_tree->node, false);
+   * so we move it to its own, which will cause it to set frame event which
+   * will place it where it belongs */
+  wlr_scene_node_set_position(&toplevel->scene_tree->node,
+                              toplevel->workspace->output->usable_area.x,
+                              toplevel->workspace->output->usable_area.y);
+  
+  if(toplevel->workspace->fullscreen_toplevel != NULL) {
+    wlr_scene_node_set_enabled(&toplevel->scene_tree->node, false);
+  }
 
   /* we are keeping toplevels scene_tree in this free user data field, it is used in 
    * assigning parents to popups */
@@ -237,6 +244,7 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
 
   if(toplevel == workspace->fullscreen_toplevel) {
     workspace->fullscreen_toplevel = NULL;
+    layers_under_fullscreen_set_enabled(workspace->output, true);
   }
 
   if(toplevel->floating) {
@@ -435,8 +443,7 @@ toplevel_handle_request_maximize(struct wl_listener *listener, void *data) {
 
 void
 toplevel_handle_request_fullscreen(struct wl_listener *listener, void *data) {
-  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel,
-                                                  request_fullscreen);
+  struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_fullscreen);
 
   struct mwc_output *output = toplevel->workspace->output;
   if(toplevel->xdg_toplevel->requested.fullscreen) {
@@ -607,15 +614,6 @@ cursor_jump_focused_toplevel(void) {
 }
 
 void
-toplevel_center_floating(struct mwc_toplevel *toplevel) {
-  assert(toplevel->floating);
-
-  struct wlr_box output_box = toplevel->workspace->output->usable_area;
-  toplevel->pending.x = output_box.x + (output_box.width - toplevel->pending.width) / 2;
-  toplevel->pending.y = output_box.y + (output_box.height - toplevel->pending.height) / 2;
-}
-
-void
 toplevel_set_initial_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
                            uint32_t width, uint32_t height) {
   assert(!toplevel->mapped);
@@ -701,8 +699,8 @@ toplevel_commit(struct mwc_toplevel *toplevel) {
 void
 toplevel_set_fullscreen(struct mwc_toplevel *toplevel) {
   if(!toplevel->mapped) return;
-
   if(toplevel->workspace->fullscreen_toplevel != NULL) return;
+  if(toplevel == server.grabbed_toplevel) return;
 
   struct mwc_workspace *workspace = toplevel->workspace;
   struct mwc_output *output = workspace->output;
@@ -737,13 +735,7 @@ toplevel_set_fullscreen(struct mwc_toplevel *toplevel) {
   }
 
   /* we also disable bottom and top layer surfaces, and leave only the backgorund */
-  struct mwc_layer_surface *l;
-  wl_list_for_each(l, &output->layers.bottom, link) {
-    wlr_scene_node_set_enabled(&l->scene->tree->node, false);
-  }
-  wl_list_for_each(l, &output->layers.top, link) {
-    wlr_scene_node_set_enabled(&l->scene->tree->node, false);
-  }
+  layers_under_fullscreen_set_enabled(workspace->output, false);
 
   wlr_foreign_toplevel_handle_v1_set_fullscreen(toplevel->foreign_toplevel_handle, true);
 }
@@ -784,16 +776,8 @@ toplevel_unset_fullscreen(struct mwc_toplevel *toplevel) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, true);
   }
 
-  struct mwc_layer_surface *l;
-  wl_list_for_each(l, &output->layers.bottom, link) {
-    wlr_scene_node_set_enabled(&l->scene->tree->node, true);
-  }
-  wl_list_for_each(l, &output->layers.top, link) {
-    wlr_scene_node_set_enabled(&l->scene->tree->node, true);
-  }
-
+  layers_under_fullscreen_set_enabled(workspace->output, true);
   layout_set_pending_state(workspace);
-  
   wlr_foreign_toplevel_handle_v1_set_fullscreen(toplevel->foreign_toplevel_handle, false);
 }
 
@@ -859,9 +843,7 @@ toplevel_resize(void) {
     }
   }
 
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
-  toplevel_set_pending_state(toplevel, new_x - geometry.x, new_y - geometry.y,
-                             new_width, new_height);
+  toplevel_set_pending_state(toplevel, new_x, new_y, new_width, new_height);
 }
 
 void
@@ -1060,7 +1042,11 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
   struct mwc_toplevel *under_cursor = layout_toplevel_at(workspace, x, y);
 
   if(under_cursor == NULL) {
-    wl_list_insert(workspace->masters.next, &toplevel->link);
+    if(wl_list_length(&workspace->masters) < server.config->master_count) {
+      wl_list_insert(workspace->masters.prev, &toplevel->link);
+    } else {
+      wl_list_insert(workspace->slaves.prev, &toplevel->link);
+    }
   } else {
     bool on_left_side = x <= under_cursor->current.x + under_cursor->current.width / 2;
     bool on_top_side = y <= under_cursor->current.y + under_cursor->current.height / 2;
@@ -1078,7 +1064,7 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
     }
 
     if(toplevel_is_master(under_cursor)
-      && wl_list_length(&workspace->masters) > server.config->master_count) {
+       && wl_list_length(&workspace->masters) > server.config->master_count) {
       struct mwc_toplevel *last = wl_container_of(workspace->masters.prev, last, link);
       wl_list_remove(&last->link);
       wl_list_insert(workspace->slaves.prev, &last->link);
@@ -1088,5 +1074,4 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
       wl_list_insert(workspace->masters.prev, &last->link);
     }
   }
-
 }
