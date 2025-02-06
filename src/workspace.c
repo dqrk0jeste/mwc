@@ -93,13 +93,7 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
   /* and show this workspace's toplevels */
   if(workspace->fullscreen_toplevel != NULL) {
     wlr_scene_node_set_enabled(&workspace->fullscreen_toplevel->scene_tree->node, true);
-    struct mwc_layer_surface *l;
-    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, false);
-    }
-    wl_list_for_each(l, &workspace->output->layers.top, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, false);
-    }
+    layers_under_fullscreen_set_enabled(workspace->output, false);
   } else {
     wl_list_for_each(t, &workspace->floating_toplevels, link) {
       wlr_scene_node_set_enabled(&t->scene_tree->node, true);
@@ -109,6 +103,10 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
     }
     wl_list_for_each(t, &workspace->slaves, link) {
       wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+
+    if(prev_workspace->fullscreen_toplevel != NULL) {
+      layers_under_fullscreen_set_enabled(workspace->output, true);
     }
   }
 
@@ -142,7 +140,8 @@ void
 toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
                            struct mwc_workspace *workspace) {
   assert(toplevel != NULL && workspace != NULL);
-  if(toplevel->workspace == workspace) return;
+  if(toplevel == server.grabbed_toplevel || toplevel->workspace == workspace
+     || workspace->fullscreen_toplevel != NULL) return;
 
   struct mwc_workspace *old_workspace = toplevel->workspace;
 
@@ -187,12 +186,9 @@ toplevel_move_to_workspace(struct mwc_toplevel *toplevel,
     toplevel_set_pending_state(toplevel, output_box.x, output_box.y,
                                output_box.width, output_box.height);
 
-    struct mwc_layer_surface *l;
-    wl_list_for_each(l, &workspace->output->layers.bottom, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
-    }
-    wl_list_for_each(l, &workspace->output->layers.top, link) {
-      wlr_scene_node_set_enabled(&l->scene->tree->node, true);
+    layers_under_fullscreen_set_enabled(workspace->output, false);
+    if(old_workspace->output != workspace->output) {
+      layers_under_fullscreen_set_enabled(old_workspace->output, true);
     }
 
     if(toplevel->floating) {

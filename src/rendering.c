@@ -225,6 +225,7 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
     wlr_scene_node_lower_to_bottom(&toplevel->shadow->node);
   }
 
+  wlr_scene_node_set_enabled(&toplevel->shadow->node, true);
   wlr_scene_shadow_set_size(toplevel->shadow, shadow_box.width, shadow_box.height);
   wlr_scene_node_set_position(&toplevel->shadow->node, shadow_box.x, shadow_box.y);
   wlr_scene_shadow_set_clipped_region(toplevel->shadow, clipped_region);
@@ -233,7 +234,6 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
 bool
 toplevel_draw_frame(struct mwc_toplevel *toplevel) {
   if(!toplevel->mapped) return false;
-  wlr_scene_node_set_enabled(&toplevel->scene_tree->node, true);
 
   bool need_more_frames = false;
   if(toplevel->animation.running) {

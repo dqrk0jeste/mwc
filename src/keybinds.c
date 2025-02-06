@@ -89,7 +89,7 @@ keybind_run(void *data) {
 void
 keybind_change_workspace(void *data) {
   struct mwc_workspace *workspace = data;
-  change_workspace(workspace, false);
+  change_workspace(workspace, server.grabbed_toplevel != NULL);
 }
 
 void
@@ -100,7 +100,7 @@ keybind_next_workspace(void *data) {
     next = current->output->workspaces.next;
   }
   struct mwc_workspace *next_workspace = wl_container_of(next, next_workspace, link);
-  change_workspace(next_workspace, false);
+  change_workspace(next_workspace, server.grabbed_toplevel != NULL);
 }
 
 void
@@ -111,13 +111,13 @@ keybind_prev_workspace(void *data) {
     prev = current->output->workspaces.prev;
   }
   struct mwc_workspace *prev_workspace = wl_container_of(prev, prev_workspace, link);
-  change_workspace(prev_workspace, false);
+  change_workspace(prev_workspace, server.grabbed_toplevel != NULL);
 }
 
 void
 keybind_move_focused_toplevel_to_workspace(void *data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
-  if(toplevel == NULL) return;
+  if(toplevel == NULL || toplevel == server.grabbed_toplevel) return;
 
   struct mwc_workspace *workspace = data;
   toplevel_move_to_workspace(toplevel, workspace);
@@ -207,6 +207,8 @@ keybind_move_focus(void *data) {
   uint64_t direction = (uint64_t)data;
 
   struct mwc_toplevel *toplevel = server.focused_toplevel;
+  /* we need grabbed toplevel toplevel to keep focus */
+  if(toplevel == server.grabbed_toplevel) return;
 
   enum mwc_direction opposite_side;
   switch(direction) {
@@ -356,8 +358,7 @@ keybind_swap_focused_toplevel(void *data) {
   uint64_t direction = (uint64_t)data;
 
   struct mwc_toplevel *toplevel = server.focused_toplevel;
-
-  if(toplevel == NULL) return;
+  if(toplevel == NULL || toplevel == server.grabbed_toplevel) return;
 
   struct mwc_workspace *workspace = toplevel->workspace;
   struct mwc_output *relative_output =
@@ -463,7 +464,7 @@ keybind_swap_focused_toplevel(void *data) {
 void
 keybind_focused_toplevel_toggle_floating(void *data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
-  if(toplevel == NULL || toplevel->fullscreen) return;
+  if(toplevel == NULL || toplevel->fullscreen || toplevel == server.grabbed_toplevel) return;
 
   if(toplevel->floating) {
     toplevel->floating = false;
@@ -510,7 +511,7 @@ keybind_focused_toplevel_toggle_floating(void *data) {
 void
 keybind_focused_toplevel_toggle_fullscreen(void* data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
-  if(toplevel == NULL) return;
+  if(toplevel == NULL || toplevel == server.grabbed_toplevel) return;
 
   if(toplevel->fullscreen) {
     toplevel_unset_fullscreen(toplevel);

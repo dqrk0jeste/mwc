@@ -9,6 +9,7 @@
 #include "layout.h"
 #include "toplevel.h"
 #include "wlr-layer-shell-unstable-v1-protocol.h"
+#include "workspace.h"
 
 #include <stdlib.h>
 #include <wayland-util.h>
@@ -292,5 +293,17 @@ layer_get_list(struct mwc_output *output, enum zwlr_layer_shell_v1_layer layer) 
       return &output->layers.top;
     case ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY:
       return &output->layers.overlay;
+  }
+}
+
+/* we dont touch background as we want it seen behind the fullscreened toplevel */
+void
+layers_under_fullscreen_set_enabled(struct mwc_output *output, bool enable) {
+  struct mwc_layer_surface *l;
+  wl_list_for_each(l, &output->layers.bottom, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, enable);
+  }
+  wl_list_for_each(l, &output->layers.top, link) {
+    wlr_scene_node_set_enabled(&l->scene->tree->node, enable);
   }
 }
