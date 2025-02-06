@@ -245,6 +245,19 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   if(toplevel == workspace->fullscreen_toplevel) {
     workspace->fullscreen_toplevel = NULL;
     layers_under_fullscreen_set_enabled(workspace->output, true);
+    struct mwc_toplevel *t;
+    wl_list_for_each(t, &workspace->masters, link) {
+      if(t == toplevel) continue;
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+    wl_list_for_each(t, &workspace->slaves, link) {
+      if(t == toplevel) continue;
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
+    wl_list_for_each(t, &workspace->floating_toplevels, link) {
+      if(t == toplevel) continue;
+      wlr_scene_node_set_enabled(&t->scene_tree->node, true);
+    }
   }
 
   if(toplevel->floating) {
