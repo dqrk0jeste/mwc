@@ -1,7 +1,16 @@
 #pragma once
 
 #include <wlr/types/wlr_input_device.h>
+#include <wlr/types/wlr_pointer.h>
 #include <libinput.h>
+
+struct mwc_pointer {
+  struct wlr_pointer *wlr_pointer;
+  const char *name;
+  struct wl_list link;
+
+  struct wl_listener destroy;
+};
 
 enum mwc_cursor_mode {
 	MWC_CURSOR_PASSTHROUGH,
@@ -13,7 +22,10 @@ void
 server_handle_new_pointer(struct wlr_input_device *device);
 
 void
-pointer_device_configure(struct libinput_device *device);
+pointer_handle_destroy(struct wl_listener *listener, void *data);
+
+bool
+pointer_configure(struct mwc_pointer *pointer);
 
 void
 server_reset_cursor_mode(void);

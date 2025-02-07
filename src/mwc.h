@@ -111,6 +111,8 @@ struct mwc_server {
   struct wlr_xdg_decoration_manager_v1 *xdg_decoration_manager;
   struct wl_listener request_xdg_decoration;
 
+  struct wlr_server_decoration_manager *kde_decoration_manager;
+
   struct wlr_foreign_toplevel_manager_v1 *foreign_toplevel_manager;
 
   struct wlr_gamma_control_manager_v1 *gamma_control_manager;

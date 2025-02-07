@@ -1,14 +1,17 @@
+#include <scenefx/types/fx/blur_data.h>
+#include <scenefx/types/fx/corner_location.h>
+
 #include "config.h"
 #include "keybinds.h"
 #include "keyboard.h"
 #include "mwc.h"
 #include "output.h"
+#include "pointer.h"
 #include "workspace.h"
 #include "toplevel.h"
+#include "layout.h"
 
 #include <libinput.h>
-#include <scenefx/types/fx/blur_data.h>
-#include <scenefx/types/fx/corner_location.h>
 #include <stddef.h>
 #include <limits.h>
 #include <stdint.h>
@@ -17,6 +20,7 @@
 #include <unistd.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
+#include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/util/log.h>
 
 #define clamp(v, a, b) (max((a), min((v), (b))))
@@ -959,38 +963,42 @@ config_load() {
   return c;
 }
 
+/* if we are reloading the config we dont want to free some fields that are
+ * not hot reloadable and that should be kept alive */
 void
-config_destroy(struct mwc_config *c) {
-  struct mwc_output *o;
-  wl_list_for_each(o, &c->outputs, link) {
+config_destroy(struct mwc_config *c, bool reload) {
+  struct output_config *o, *o_temp;
+  wl_list_for_each_safe(o, o_temp, &c->outputs, link) {
     free(o);
   }
 
-  struct keybind *k;
-  wl_list_for_each(k, &c->keybinds, link) {
+  struct keybind *k, *k_temp;
+  wl_list_for_each_safe(k, k_temp, &c->keybinds, link) {
     free(k);
   }
-  wl_list_for_each(k, &c->pointer_keybinds, link) {
+  wl_list_for_each_safe(k, k_temp, &c->pointer_keybinds, link) {
     free(k);
   }
 
   /* workspaces are the only thing that are never freed, as we do not allow
    * destroying them for the lifetime of the compositor */
-  /*struct workspace_config *w;*/
-  /*wl_list_for_each(w, &c->workspaces, link) {*/
-  /*  free(w);*/
-  /*}*/
+  if(!reload) {
+    struct workspace_config *w, *w_temp;
+    wl_list_for_each_safe(w, w_temp, &c->workspaces, link) {
+      free(w);
+    }
+  }
 
-  struct workspace_config *wrf;
-  wl_list_for_each(wrf, &c->window_rules.floating, link) {
+  struct window_rule_float *wrf, *wrf_temp;
+  wl_list_for_each_safe(wrf, wrf_temp, &c->window_rules.floating, link) {
     free(wrf);
   }
-  struct workspace_config *wrs;
-  wl_list_for_each(wrs, &c->window_rules.size, link) {
+  struct window_rule_size *wrs, *wrs_temp;
+  wl_list_for_each_safe(wrs, wrs_temp, &c->window_rules.size, link) {
     free(wrs);
   }
-  struct workspace_config *wro;
-  wl_list_for_each(wro, &c->window_rules.opacity, link) {
+  struct window_rule_opacity *wro, *wro_temp;
+  wl_list_for_each_safe(wro, wro_temp, &c->window_rules.opacity, link) {
     free(wro);
   }
 
@@ -998,8 +1006,8 @@ config_destroy(struct mwc_config *c) {
   free(c->keymap_variants);
   free(c->keymap_options);
 
-  struct pointer_config *p;
-  wl_list_for_each(p, &c->pointers, link) {
+  struct pointer_config *p, *p_temp;
+  wl_list_for_each_safe(p, p_temp, &c->pointers, link) {
     free(p);
   }
 
@@ -1014,6 +1022,44 @@ config_destroy(struct mwc_config *c) {
   free(c);
 }
 
+void 
+toplevel_reapply_effects_etc(struct mwc_toplevel *toplevel) {
+  toplevel_recheck_opacity_rules(toplevel);
+
+  if(toplevel->shadow != NULL && !server.config->shadows) {
+    wlr_scene_node_destroy(&toplevel->shadow->node);
+    toplevel->shadow = NULL;
+  }
+}
+
+void
+layout_reorganize(struct mwc_workspace *workspace) {
+  uint32_t master_count = wl_list_length(&workspace->masters);
+  
+  if(master_count > server.config->master_count) {
+    while(master_count > server.config->master_count) {
+      struct wl_list *last = workspace->masters.prev;
+      wl_list_remove(last);
+      wl_list_insert(workspace->slaves.prev, last);
+      master_count--;
+    }
+
+    return;
+  }
+
+  uint32_t slave_count = wl_list_length(&workspace->slaves);
+  if(master_count < server.config->master_count && slave_count > 0) {
+    while(master_count < server.config->master_count && slave_count > 0) {
+      struct wl_list *last = workspace->slaves.prev;
+      wl_list_remove(last);
+      wl_list_insert(workspace->masters.prev, last);
+      master_count++;
+      slave_count--;
+    }
+  }
+
+}
+
 void
 config_reload() {
   struct mwc_config *c = config_load();
@@ -1022,23 +1068,28 @@ config_reload() {
     return;
   }
 
-  struct workspace_config *w;
-  wl_list_for_each(w, &c->workspaces, link) {
-    bool found = false;
-    struct workspace_config *old_w;
-    wl_list_for_each(old_w, &server.config->workspaces, link) {
-      if(w->index == old_w->index) {
-        found = true;
-        break;
-      }
-    }
-
-    if(!found) {
-      wl_list_insert(&server.config->workspaces, &w->link);
-    }
-  }
+  /* TODO */
+  /*struct workspace_config *wc;*/
+  /*wl_list_for_each(wc, &c->workspaces, link) {*/
+  /*  bool found = false;*/
+  /*  struct workspace_config *old_wc;*/
+  /*  wl_list_for_each(old_wc, &server.config->workspaces, link) {*/
+  /*    if(wc->index == old_wc->index) {*/
+  /*      found = true;*/
+  /*      break;*/
+  /*    }*/
+  /*  }*/
+  /**/
+  /*  if(!found) {*/
+  /*    wl_list_remove(&wc->link);*/
+  /*    wl_list_insert(&server.config->workspaces, &wc->link);*/
+  /*  }*/
+  /*}*/
 
   c->workspaces = server.config->workspaces;
+
+  struct mwc_config *old_config = server.config;
+  server.config = c;
 
   struct output_config *o;
   wl_list_for_each(o, &c->outputs, link) {
@@ -1048,7 +1099,7 @@ config_reload() {
       wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
       if(strcmp(o->name, out->wlr_output->name) == 0) {
         if(o->width != output_box.width || o->height != output_box.height
-          || o->refresh_rate * 1000 - out->wlr_output->refresh > 1000) {
+           || o->refresh_rate - out->wlr_output->refresh > 1000) {
           output_initialize(out->wlr_output, o);
         }
 
@@ -1059,42 +1110,78 @@ config_reload() {
     }
   }
 
+  if(c->blur) {
+    struct mwc_output *output;
+    wl_list_for_each(output, &server.outputs, link) {
+      if(output->blur != NULL) {
+        wlr_scene_node_destroy(&output->blur->node);
+      }
+      struct wlr_box output_box;
+      wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);
+
+      output->blur = wlr_scene_optimized_blur_create(&server.scene->tree,
+                                                     output_box.width, output_box.height);
+      wlr_scene_set_blur_data(server.scene, server.config->blur_params);
+      wlr_scene_node_place_above(&output->blur->node, &server.background_tree->node);
+      wlr_scene_node_set_position(&output->blur->node, output_box.x, output_box.y);
+    }
+  } else if(old_config->blur) {
+    struct mwc_output *output;
+    wl_list_for_each(output, &server.outputs, link) {
+      wlr_scene_node_destroy(&output->blur->node);
+      output->blur = NULL;
+    }
+  }
+
   struct mwc_keyboard *keyboard;
   wl_list_for_each(keyboard, &server.keyboards, link) {
-    keyboard_configure(keyboard, c);
+    keyboard_configure(keyboard);
   }
 
-  
-  wl_list_for_each(pointer, &server.keyboards, link) {
-    keyboard_configure(iter, c);
+  struct mwc_pointer *pointer; 
+  wl_list_for_each(pointer, &server.pointers, link) {
+    pointer_configure(pointer);
   }
-
-  config_destroy(server.config);
-  server.config = c;
 
   struct mwc_output *out;
   wl_list_for_each(out, &server.outputs, link) {
     struct mwc_workspace *w;
     wl_list_for_each(w, &out->workspaces, link) {
+      if(c->master_count != old_config->master_count) {
+        layout_reorganize(w);
+      }
+
       struct mwc_toplevel *t;
       wl_list_for_each(t, &w->floating_toplevels, link) {
-        toplevel_recheck_opacity_rules(t);
+        toplevel_reapply_effects_etc(t);
       }
+      wl_list_for_each(t, &w->masters, link) {
+        toplevel_reapply_effects_etc(t);
+      }
+      wl_list_for_each(t, &w->slaves, link) {
+        toplevel_reapply_effects_etc(t);
+      }
+
+      layout_set_pending_state(w);
     }
   }
 
+  wlr_server_decoration_manager_set_default_mode(server.kde_decoration_manager,
+                                                 c->client_side_decorations
+                                                 ? WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT
+                                                 : WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
 
+  wlr_xcursor_manager_destroy(server.cursor_mgr);
+
+  server.cursor_mgr = wlr_xcursor_manager_create(server.config->cursor_theme,
+                                                 server.config->cursor_size);
+  char cursor_size[8];
+  snprintf(cursor_size, sizeof(cursor_size), "%u", server.config->cursor_size);
+
+  cursor_size[7] = 0;
+  setenv("XCURSOR_THEME", server.config->cursor_theme, true);
+  setenv("XCURSOR_SIZE", cursor_size, true);
+
+  config_destroy(old_config, true);
 }
 
-/* place this when handling blur */
-/*  if(c->blur) {*/
-/*    if(server.config->blur) {*/
-/*      wlr_scene_optimized_blur_set_size(out->blur, output_box.width, output_box.height);*/
-/*    } else {*/
-/*      out->blur = wlr_scene_optimized_blur_create(&server.scene->tree,*/
-/*                                                  output_box.width, output_box.height);*/
-        /*    }*/
-        /*    wlr_scene_node_place_above(&out->blur->node, &server.background_tree->node);*/
-        /*    wlr_scene_node_set_position(&out->blur->node, output_box.x, output_box.y);*/
-        /*  }*/
-        /*}*/

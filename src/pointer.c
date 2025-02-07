@@ -13,6 +13,7 @@
 #include "workspace.h"
 
 #include <libinput.h>
+#include <wayland-server-core.h>
 #include <wayland-util.h>
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
@@ -22,20 +23,39 @@ extern struct mwc_server server;
 
 void
 server_handle_new_pointer(struct wlr_input_device *device) {
-  /* enable natural scrolling and tap to click*/
-  if(wlr_input_device_is_libinput(device)) {
-    struct libinput_device *libinput_device = wlr_libinput_get_device_handle(device);
-    libinput_device_ref(libinput_device);
-    pointer_device_configure(libinput_device);
-    libinput_device_unref(libinput_device);
+  struct mwc_pointer *pointer = calloc(1, sizeof(*pointer));
+  pointer->wlr_pointer = wlr_pointer_from_input_device(device);
+  pointer->wlr_pointer->data = pointer;
+
+  if(!pointer_configure(pointer)) {
+    wlr_log(WLR_ERROR, "could not configure pointer device, not libinput");
   }
 
   wlr_cursor_attach_input_device(server.cursor, device);
+
+  wl_list_insert(&server.pointers, &pointer->link);
+
+  pointer->destroy.notify = pointer_handle_destroy;
+  wl_signal_add(&device->events.destroy, &pointer->destroy);
 }
 
 void
-pointer_device_configure(struct libinput_device *device) {
-  const char *name = libinput_device_get_name(device);
+pointer_handle_destroy(struct wl_listener *listener, void *data) {
+  struct mwc_pointer *pointer = wl_container_of(listener, pointer, destroy);
+
+  wl_list_remove(&pointer->destroy.link);
+  wl_list_remove(&pointer->link);
+
+  free(pointer);
+}
+
+bool
+pointer_configure(struct mwc_pointer *pointer) {
+  if(!wlr_input_device_is_libinput(&pointer->wlr_pointer->base)) return false;
+
+  struct libinput_device *device = wlr_libinput_get_device_handle(&pointer->wlr_pointer->base);
+  libinput_device_ref(device);
+  pointer->name = libinput_device_get_name(device);
 
   enum libinput_config_accel_profile accel;
   double sensitivity;
@@ -44,7 +64,7 @@ pointer_device_configure(struct libinput_device *device) {
   bool found = false;
   struct pointer_config *p;
   wl_list_for_each(p, &server.config->pointers, link) {
-    if(strcmp(p->name, name) == 0) {
+    if(strcmp(p->name, pointer->name) == 0) {
       accel = p->acceleration;
       sensitivity = p->sensitivity;
       found = true;
@@ -60,14 +80,14 @@ pointer_device_configure(struct libinput_device *device) {
   if(libinput_device_config_accel_is_available(device)) {
     if(libinput_device_config_accel_set_speed(device, sensitivity)
        != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-      wlr_log(WLR_ERROR, "applying sensitivity to device '%s' failed", name);
+      wlr_log(WLR_ERROR, "applying sensitivity to device '%s' failed", pointer->name);
     }
 
     if(accel) {
       struct libinput_config_accel *accel_config = libinput_config_accel_create(accel);
       if(libinput_device_config_accel_apply(device, accel_config)
          != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-        wlr_log(WLR_ERROR, "applying acceleration profile to device '%s' failed", name);
+        wlr_log(WLR_ERROR, "applying acceleration profile to device '%s' failed", pointer->name);
       }
       libinput_config_accel_destroy(accel_config);
     }
@@ -78,24 +98,28 @@ pointer_device_configure(struct libinput_device *device) {
     /* then apply trackpad specific settings */
     if(libinput_device_config_tap_set_enabled(device, server.config->trackpad_tap_to_click)
        != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-      wlr_log(WLR_ERROR, "applying tap to click to device '%s' failed", name);
+      wlr_log(WLR_ERROR, "applying tap to click to device '%s' failed", pointer->name);
     }
 
     if(libinput_device_config_scroll_set_natural_scroll_enabled(device,
        server.config->trackpad_natural_scroll) != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-      wlr_log(WLR_ERROR, "applying natural scroll to device '%s' failed", name);
+      wlr_log(WLR_ERROR, "applying natural scroll to device '%s' failed", pointer->name);
     }
 
     if(libinput_device_config_scroll_set_method(device, server.config->trackpad_scroll_method)
        != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-      wlr_log(WLR_ERROR, "applying scroll method to device '%s' failed", name);
+      wlr_log(WLR_ERROR, "applying scroll method to device '%s' failed", pointer->name);
     }
 
     if(libinput_device_config_dwt_set_enabled(device,
        server.config->trackpad_disable_while_typing) != LIBINPUT_CONFIG_STATUS_SUCCESS) {
-      wlr_log(WLR_ERROR, "applying disable while typing to device '%s' failed", name);
+      wlr_log(WLR_ERROR, "applying disable while typing to device '%s' failed", pointer->name);
     }
   }
+
+  libinput_device_unref(device);
+
+  return true;
 }
 
 void

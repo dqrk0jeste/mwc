@@ -208,7 +208,7 @@ keybind_move_focus(void *data) {
 
   struct mwc_toplevel *toplevel = server.focused_toplevel;
   /* we need grabbed toplevel toplevel to keep focus */
-  if(toplevel == server.grabbed_toplevel) return;
+  if(server.grabbed_toplevel != NULL && toplevel == server.grabbed_toplevel) return;
 
   enum mwc_direction opposite_side;
   switch(direction) {
@@ -524,4 +524,3 @@ void
 keybind_reload_config(void *data) {
   config_reload();
 }
-
