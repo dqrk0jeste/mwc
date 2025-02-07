@@ -1065,9 +1065,11 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
     bool on_top_side = y <= under_cursor->current.y + under_cursor->current.height / 2;
     bool under_cursor_is_master = toplevel_is_master(under_cursor);
 
+    /* FIXME */
+
     /* we insert it before under_cursor if either:
-   *   - its last master
-   *   - cursor is on left (top) */
+     *   - its last master
+     *   - cursor is on left (top) */
     if((under_cursor_is_master && &under_cursor->link == workspace->masters.prev)
        || under_cursor_is_master && on_left_side
        || !under_cursor_is_master && on_top_side) {

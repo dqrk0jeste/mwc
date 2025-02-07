@@ -18,6 +18,7 @@
 #include "session_lock.h"
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -163,8 +164,8 @@ main(int argc, char *argv[]) {
     wlr_log_init(WLR_INFO, NULL);
   }
 
-  bool valid_config = server_load_config();
-  if(!valid_config) {
+  server.config = config_load();
+  if(server.config == NULL) {
     wlr_log(WLR_ERROR, "there was a problem loading the config, quiting");
     return 1;
   }
@@ -272,17 +273,13 @@ main(int argc, char *argv[]) {
    * HiDPI support). */
   server.cursor_mgr = wlr_xcursor_manager_create(server.config->cursor_theme,
                                                  server.config->cursor_size);
+  /* we also add xcursor theme env variables */
+  char cursor_size[8];
+  snprintf(cursor_size, sizeof(cursor_size), "%u", server.config->cursor_size);
+  cursor_size[7] = 0;
 
-  /*
-   * wlr_cursor *only* displays an image on screen. It does not move around
-   * when the pointer moves. However, we can attach input devices to it, and
-   * it will generate aggregate events for all of them. In these events, we
-   * can choose how we want to process them, forwarding them to clients and
-   * moving the cursor around. More detail on this process is described in
-   * https://drewdevault.com/2018/07/17/Input-handling-in-wlroots.html.
-   *
-   * And more comments are sprinkled throughout the notify functions above.
-   */
+  setenv("XCURSOR_THEME", server.config->cursor_theme, true);
+  setenv("XCURSOR_SIZE", cursor_size, true);
 
   server.cursor_mode = MWC_CURSOR_PASSTHROUGH;
   server.cursor_motion.notify = server_handle_cursor_motion;

@@ -34,6 +34,9 @@ struct mwc_output {
 void
 server_handle_new_output(struct wl_listener *listener, void *data);
 
+struct wlr_box
+output_add_to_layout(struct mwc_output *output, struct output_config *config);
+
 bool
 output_initialize(struct wlr_output *output, struct output_config *config);
 

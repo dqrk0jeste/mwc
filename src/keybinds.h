@@ -72,3 +72,6 @@ keybind_focused_toplevel_toggle_floating(void *data);
 
 void
 keybind_focused_toplevel_toggle_fullscreen(void *data);
+
+void
+keybind_reload_config(void *data);

@@ -509,7 +509,7 @@ keybind_focused_toplevel_toggle_floating(void *data) {
 }
 
 void
-keybind_focused_toplevel_toggle_fullscreen(void* data) {
+keybind_focused_toplevel_toggle_fullscreen(void *data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
   if(toplevel == NULL || toplevel == server.grabbed_toplevel) return;
 
@@ -519,3 +519,9 @@ keybind_focused_toplevel_toggle_fullscreen(void* data) {
     toplevel_set_fullscreen(toplevel);
   }
 }
+
+void
+keybind_reload_config(void *data) {
+  config_reload();
+}
+

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.h"
+
 #include <wlr/types/wlr_keyboard.h>
 
 struct mwc_keyboard {
@@ -25,3 +27,5 @@ keyboard_handle_key(struct wl_listener *listener, void *data);
 void
 keyboard_handle_destroy(struct wl_listener *listener, void *data);
 
+bool
+keyboard_configure(struct mwc_keyboard *keyboard, struct mwc_config *c);
