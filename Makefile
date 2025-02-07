@@ -7,7 +7,7 @@ CFLAGS_PKG_CONFIG!=$(PKG_CONFIG) --cflags $(PKGS)
 CFLAGS+=$(CFLAGS_PKG_CONFIG)
 CFLAGS+=-Ibuild/protocols
 ifdef DEBUG
-CFLAGS += -fsanitize=address,undefined
+CFLAGS += -g -fsanitize=address,undefined
 endif
 LIBS!=$(PKG_CONFIG) --libs $(PKGS)
 

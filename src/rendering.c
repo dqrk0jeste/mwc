@@ -38,9 +38,9 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   if(toplevel->border == NULL) {
     toplevel->border = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, border_color);
     wlr_scene_node_lower_to_bottom(&toplevel->border->node);
-    wlr_scene_node_set_position(&toplevel->border->node, -border_width, -border_width);
   }
 
+  wlr_scene_node_set_position(&toplevel->border->node, -border_width, -border_width);
   wlr_scene_rect_set_size(toplevel->border, width + 2 * border_width,
                           height + 2 * border_width);
   wlr_scene_rect_set_corner_radius(toplevel->border, border_radius, border_radius_location);
@@ -97,6 +97,10 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
     wlr_scene_buffer_set_backdrop_blur(buffer, true);
     wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
     wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
+  } else {
+    wlr_scene_buffer_set_backdrop_blur(buffer, false);
+    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, false);
+    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
   }
 
   uint32_t border_radius = toplevel->fullscreen ? 0 : server.config->border_radius;

@@ -79,7 +79,7 @@ server_handle_new_keyboard(struct wlr_input_device *device) {
   struct mwc_keyboard *keyboard = calloc(1, sizeof(*keyboard));
   keyboard->wlr_keyboard = wlr_keyboard;
   
-  keyboard_configure(keyboard, server.config);
+  keyboard_configure(keyboard);
 
   keyboard->modifiers.notify = keyboard_handle_modifiers;
   wl_signal_add(&wlr_keyboard->events.modifiers, &keyboard->modifiers);
@@ -98,18 +98,19 @@ server_handle_new_keyboard(struct wlr_input_device *device) {
 }
 
 bool
-keyboard_configure(struct mwc_keyboard *keyboard, struct mwc_config *c) {
+keyboard_configure(struct mwc_keyboard *keyboard) {
   struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
   if(context == NULL) return false;
 
   struct xkb_rule_names rule_names = {
-    .layout = c->keymap_layouts,
-    .variant = c->keymap_variants,
-    .options = c->keymap_options,
+    .layout = server.config->keymap_layouts,
+    .variant = server.config->keymap_variants,
+    .options = server.config->keymap_options,
   };
 
   struct xkb_keymap *keymap = xkb_keymap_new_from_names(context, &rule_names,
                                                         XKB_KEYMAP_COMPILE_NO_FLAGS);
+  /* TODO: use defaults here if something is wrong */
   if(keymap == NULL) return false;
 
   wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);

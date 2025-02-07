@@ -276,10 +276,24 @@ main(int argc, char *argv[]) {
   /* we also add xcursor theme env variables */
   char cursor_size[8];
   snprintf(cursor_size, sizeof(cursor_size), "%u", server.config->cursor_size);
+
   cursor_size[7] = 0;
 
   setenv("XCURSOR_THEME", server.config->cursor_theme, true);
   setenv("XCURSOR_SIZE", cursor_size, true);
+
+  /*
+   * wlr_cursor *only* displays an image on screen. It does not move around
+   * when the pointer moves. However, we can attach input devices to it, and
+   * it will generate aggregate events for all of them. In these events, we
+   * can choose how we want to process them, forwarding them to clients and
+   * moving the cursor around. More detail on this process is described in
+   * https://drewdevault.com/2018/07/17/Input-handling-in-wlroots.html.
+   *
+   * And more comments are sprinkled throughout the notify functions above.
+   */
+
+  wl_list_init(&server.pointers);
 
   server.cursor_mode = MWC_CURSOR_PASSTHROUGH;
   server.cursor_motion.notify = server_handle_cursor_motion;
@@ -336,7 +350,8 @@ main(int argc, char *argv[]) {
   wlr_viewporter_create(server.wl_display);
 	wlr_presentation_create(server.wl_display, server.backend);
 
-  wlr_server_decoration_manager_set_default_mode(wlr_server_decoration_manager_create(server.wl_display),
+  server.kde_decoration_manager = wlr_server_decoration_manager_create(server.wl_display);
+  wlr_server_decoration_manager_set_default_mode(server.kde_decoration_manager,
                                                  server.config->client_side_decorations
                                                  ? WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT
                                                  : WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
