@@ -50,6 +50,8 @@ struct mwc_server {
   struct wlr_layer_shell_v1 *layer_shell;
 	struct wl_listener new_layer_surface;
 
+  struct wl_list pointers;
+
 	struct wlr_cursor *cursor;
 	struct wlr_xcursor_manager *cursor_mgr;
 	struct wl_listener cursor_motion;

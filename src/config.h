@@ -7,6 +7,7 @@
 
 #include <libinput.h>
 #include <regex.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <wayland-server-core.h>
@@ -176,8 +177,11 @@ bool
 config_handle_line(char *line, size_t line_number, char **keyword,
                    char ***args, size_t *args_count);
 
-bool
-server_load_config();
+struct mwc_config *
+config_load();
 
 void
 config_set_default_needed_params(struct mwc_config *c);
+
+void
+config_reload();

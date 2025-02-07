@@ -93,22 +93,7 @@ server_handle_new_output(struct wl_listener *listener, void *data) {
 
   wl_list_insert(&server.outputs, &output->link);
 
-  struct wlr_output_layout_output *layout;
-  if(output_config != NULL) {
-    wlr_log(WLR_INFO, "setting position of output %s to %d, %d",
-            wlr_output->name, output_config->x, output_config->y);
-    layout = wlr_output_layout_add(server.output_layout, wlr_output,
-                                   output_config->x, output_config->y);
-  } else {
-    layout = wlr_output_layout_add_auto(server.output_layout, wlr_output);
-  }
-
-  struct wlr_scene_output *scene_output = wlr_scene_output_create(server.scene, wlr_output);
-  wlr_scene_output_layout_add_output(server.scene_layout, layout, scene_output);
-
-  struct wlr_box output_box;
-  wlr_output_layout_get_box(server.output_layout, wlr_output, &output_box);
-  output->usable_area = output_box;
+  struct wlr_box output_box = output_add_to_layout(output, output_config);
 
   /* if there were some existing workspaces then we reconfigure them */
   if(found) {
@@ -188,6 +173,28 @@ output_transfer_existing_workspaces(struct mwc_output *output) {
 
   return found;
 
+}
+
+struct wlr_box
+output_add_to_layout(struct mwc_output *output, struct output_config *config) {
+  struct wlr_output_layout_output *layout;
+  if(config != NULL) {
+    wlr_log(WLR_INFO, "setting position of output %s to %d, %d",
+            output->wlr_output->name, config->x, config->y);
+    layout = wlr_output_layout_add(server.output_layout, output->wlr_output,
+                                   config->x, config->y);
+  } else {
+    layout = wlr_output_layout_add_auto(server.output_layout, output->wlr_output);
+  }
+
+  struct wlr_scene_output *scene_output = wlr_scene_output_create(server.scene, output->wlr_output);
+  wlr_scene_output_layout_add_output(server.scene_layout, layout, scene_output);
+
+  struct wlr_box output_box;
+  wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);
+  output->usable_area = output_box;
+
+  return output_box;
 }
 
 bool

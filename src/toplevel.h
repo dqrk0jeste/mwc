@@ -171,3 +171,5 @@ toplevel_get_closest_corner(struct wlr_cursor *cursor,
 struct mwc_toplevel *
 get_pointer_focused_toplevel(void);
 
+void
+toplevel_recheck_opacity_rules(struct mwc_toplevel *toplevel);

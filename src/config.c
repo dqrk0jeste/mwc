@@ -1,6 +1,10 @@
 #include "config.h"
 #include "keybinds.h"
+#include "keyboard.h"
 #include "mwc.h"
+#include "output.h"
+#include "workspace.h"
+#include "toplevel.h"
 
 #include <libinput.h>
 #include <scenefx/types/fx/blur_data.h>
@@ -11,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <wayland-util.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/util/log.h>
 
@@ -389,6 +394,8 @@ config_add_keybind(struct mwc_config *c, char *modifiers, char *key,
     k->action = keybind_prev_workspace;
   } else if(strcmp(action, "toggle_fullscreen") == 0) {
     k->action = keybind_focused_toplevel_toggle_fullscreen;
+  } else if(strcmp(action, "reload_config") == 0) {
+    k->action = keybind_reload_config;
   } else {
     wlr_log(WLR_ERROR, "invalid keybind action %s", action);
     free(k);
@@ -899,8 +906,8 @@ config_set_default_needed_params(struct mwc_config *c) {
 
 extern struct mwc_server server;
 
-bool
-server_load_config() {
+struct mwc_config *
+config_load() {
   struct mwc_config *c = calloc(1, sizeof(*c));
 
   FILE *config_file = try_open_config_file();
@@ -916,7 +923,7 @@ server_load_config() {
     config_file = fopen(default_config_path, "r");
     if(config_file == NULL) {
       wlr_log(WLR_ERROR, "couldn't find the default config file");
-      return false;
+      return NULL;
     } else {
       wlr_log(WLR_INFO, "using default config");
     }
@@ -947,10 +954,147 @@ server_load_config() {
   }
 
   fclose(config_file);
-
   config_set_default_needed_params(c);
 
-  server.config = c;
-  return true;
+  return c;
 }
 
+void
+config_destroy(struct mwc_config *c) {
+  struct mwc_output *o;
+  wl_list_for_each(o, &c->outputs, link) {
+    free(o);
+  }
+
+  struct keybind *k;
+  wl_list_for_each(k, &c->keybinds, link) {
+    free(k);
+  }
+  wl_list_for_each(k, &c->pointer_keybinds, link) {
+    free(k);
+  }
+
+  /* workspaces are the only thing that are never freed, as we do not allow
+   * destroying them for the lifetime of the compositor */
+  /*struct workspace_config *w;*/
+  /*wl_list_for_each(w, &c->workspaces, link) {*/
+  /*  free(w);*/
+  /*}*/
+
+  struct workspace_config *wrf;
+  wl_list_for_each(wrf, &c->window_rules.floating, link) {
+    free(wrf);
+  }
+  struct workspace_config *wrs;
+  wl_list_for_each(wrs, &c->window_rules.size, link) {
+    free(wrs);
+  }
+  struct workspace_config *wro;
+  wl_list_for_each(wro, &c->window_rules.opacity, link) {
+    free(wro);
+  }
+
+  free(c->keymap_layouts);
+  free(c->keymap_variants);
+  free(c->keymap_options);
+
+  struct pointer_config *p;
+  wl_list_for_each(p, &c->pointers, link) {
+    free(p);
+  }
+
+  free(c->cursor_theme);
+
+  free(c->baked_points);
+
+  for(size_t i = 0; i < c->run_count; i++) {
+    free(c->run[i]);
+  }
+  
+  free(c);
+}
+
+void
+config_reload() {
+  struct mwc_config *c = config_load();
+  if(c == NULL) {
+    wlr_log(WLR_ERROR, "could not reload the config, keeping the old one");
+    return;
+  }
+
+  struct workspace_config *w;
+  wl_list_for_each(w, &c->workspaces, link) {
+    bool found = false;
+    struct workspace_config *old_w;
+    wl_list_for_each(old_w, &server.config->workspaces, link) {
+      if(w->index == old_w->index) {
+        found = true;
+        break;
+      }
+    }
+
+    if(!found) {
+      wl_list_insert(&server.config->workspaces, &w->link);
+    }
+  }
+
+  c->workspaces = server.config->workspaces;
+
+  struct output_config *o;
+  wl_list_for_each(o, &c->outputs, link) {
+    struct mwc_output *out;
+    wl_list_for_each(out, &server.outputs, link) {
+      struct wlr_box output_box;
+      wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
+      if(strcmp(o->name, out->wlr_output->name) == 0) {
+        if(o->width != output_box.width || o->height != output_box.height
+          || o->refresh_rate * 1000 - out->wlr_output->refresh > 1000) {
+          output_initialize(out->wlr_output, o);
+        }
+
+        if(o->x != output_box.x || o->y != output_box.y) {
+          output_add_to_layout(out, o);
+        }
+      }
+    }
+  }
+
+  struct mwc_keyboard *keyboard;
+  wl_list_for_each(keyboard, &server.keyboards, link) {
+    keyboard_configure(keyboard, c);
+  }
+
+  
+  wl_list_for_each(pointer, &server.keyboards, link) {
+    keyboard_configure(iter, c);
+  }
+
+  config_destroy(server.config);
+  server.config = c;
+
+  struct mwc_output *out;
+  wl_list_for_each(out, &server.outputs, link) {
+    struct mwc_workspace *w;
+    wl_list_for_each(w, &out->workspaces, link) {
+      struct mwc_toplevel *t;
+      wl_list_for_each(t, &w->floating_toplevels, link) {
+        toplevel_recheck_opacity_rules(t);
+      }
+    }
+  }
+
+
+}
+
+/* place this when handling blur */
+/*  if(c->blur) {*/
+/*    if(server.config->blur) {*/
+/*      wlr_scene_optimized_blur_set_size(out->blur, output_box.width, output_box.height);*/
+/*    } else {*/
+/*      out->blur = wlr_scene_optimized_blur_create(&server.scene->tree,*/
+/*                                                  output_box.width, output_box.height);*/
+        /*    }*/
+        /*    wlr_scene_node_place_above(&out->blur->node, &server.background_tree->node);*/
+        /*    wlr_scene_node_set_position(&out->blur->node, output_box.x, output_box.y);*/
+        /*  }*/
+        /*}*/
