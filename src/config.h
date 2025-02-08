@@ -185,3 +185,6 @@ config_set_default_needed_params(struct mwc_config *c);
 
 void
 config_reload();
+
+void
+config_destroy(struct mwc_config *c);

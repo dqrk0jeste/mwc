@@ -38,9 +38,9 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   if(toplevel->border == NULL) {
     toplevel->border = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, border_color);
     wlr_scene_node_lower_to_bottom(&toplevel->border->node);
+    wlr_scene_node_set_position(&toplevel->border->node, -border_width, -border_width);
   }
 
-  wlr_scene_node_set_position(&toplevel->border->node, -border_width, -border_width);
   wlr_scene_rect_set_size(toplevel->border, width + 2 * border_width,
                           height + 2 * border_width);
   wlr_scene_rect_set_corner_radius(toplevel->border, border_radius, border_radius_location);
@@ -227,11 +227,11 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
                                                server.config->shadows_blur,
                                                server.config->shadows_color);
     wlr_scene_node_lower_to_bottom(&toplevel->shadow->node);
+    wlr_scene_node_set_position(&toplevel->shadow->node, shadow_box.x, shadow_box.y);
   }
 
   wlr_scene_node_set_enabled(&toplevel->shadow->node, true);
   wlr_scene_shadow_set_size(toplevel->shadow, shadow_box.width, shadow_box.height);
-  wlr_scene_node_set_position(&toplevel->shadow->node, shadow_box.x, shadow_box.y);
   wlr_scene_shadow_set_clipped_region(toplevel->shadow, clipped_region);
 }
 
