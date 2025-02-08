@@ -124,6 +124,7 @@ struct mwc_server {
   struct mwc_lock *lock;
 
   struct mwc_config *config;
+  char *config_path;
 
   bool running;
 };
