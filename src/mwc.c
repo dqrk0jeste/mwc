@@ -427,5 +427,7 @@ main(int argc, char *argv[]) {
   wlr_backend_destroy(server.backend);
   wl_display_destroy(server.wl_display);
 
+  config_destroy(server.config);
+
   return 0;
 }

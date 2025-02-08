@@ -80,13 +80,13 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
 
   /* else remove all the toplevels on that workspace */
   struct mwc_toplevel *t;
-  wl_list_for_each(t, &prev_workspace->floating_toplevels, link) {
+  wl_list_for_each(t, &workspace->output->active_workspace->floating_toplevels, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
-  wl_list_for_each(t, &prev_workspace->masters, link) {
+  wl_list_for_each(t, &workspace->output->active_workspace->masters, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
-  wl_list_for_each(t, &prev_workspace->slaves, link) {
+  wl_list_for_each(t, &workspace->output->active_workspace->slaves, link) {
     wlr_scene_node_set_enabled(&t->scene_tree->node, false);
   }
 
@@ -105,7 +105,7 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
       wlr_scene_node_set_enabled(&t->scene_tree->node, true);
     }
 
-    if(prev_workspace->fullscreen_toplevel != NULL) {
+    if(workspace->output->active_workspace->fullscreen_toplevel != NULL) {
       layers_under_fullscreen_set_enabled(workspace->output, true);
     }
   }

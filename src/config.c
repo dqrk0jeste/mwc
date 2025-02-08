@@ -419,6 +419,8 @@ config_free_args(char **args, size_t arg_count) {
   for(size_t i = 0; i < arg_count; i++) {
     if(args[i] != NULL) free(args[i]);
   }
+
+  free(args);
 }
 
 bool
@@ -963,42 +965,55 @@ config_load() {
   return c;
 }
 
-/* if we are reloading the config we dont want to free some fields that are
- * not hot reloadable and that should be kept alive */
+/* workspaces are the only thing that are never freed, as we do not allow
+ * destroying them for the lifetime of the compositor */
 void
-config_destroy(struct mwc_config *c, bool reload) {
+config_destroy(struct mwc_config *c) {
   struct output_config *o, *o_temp;
   wl_list_for_each_safe(o, o_temp, &c->outputs, link) {
+    free(o->name);
     free(o);
   }
 
   struct keybind *k, *k_temp;
   wl_list_for_each_safe(k, k_temp, &c->keybinds, link) {
+    if(k->action == keybind_run) {
+      free(k->args);
+    }
     free(k);
   }
   wl_list_for_each_safe(k, k_temp, &c->pointer_keybinds, link) {
     free(k);
   }
 
-  /* workspaces are the only thing that are never freed, as we do not allow
-   * destroying them for the lifetime of the compositor */
-  if(!reload) {
-    struct workspace_config *w, *w_temp;
-    wl_list_for_each_safe(w, w_temp, &c->workspaces, link) {
-      free(w);
-    }
-  }
-
   struct window_rule_float *wrf, *wrf_temp;
   wl_list_for_each_safe(wrf, wrf_temp, &c->window_rules.floating, link) {
+    if(wrf->condition.has_app_id_regex) {
+      regfree(&wrf->condition.app_id_regex);
+    }
+    if(wrf->condition.has_title_regex) {
+      regfree(&wrf->condition.title_regex);
+    }
     free(wrf);
   }
   struct window_rule_size *wrs, *wrs_temp;
   wl_list_for_each_safe(wrs, wrs_temp, &c->window_rules.size, link) {
+    if(wrs->condition.has_app_id_regex) {
+      regfree(&wrs->condition.app_id_regex);
+    }
+    if(wrs->condition.has_title_regex) {
+      regfree(&wrs->condition.title_regex);
+    }
     free(wrs);
   }
   struct window_rule_opacity *wro, *wro_temp;
   wl_list_for_each_safe(wro, wro_temp, &c->window_rules.opacity, link) {
+    if(wro->condition.has_app_id_regex) {
+      regfree(&wro->condition.app_id_regex);
+    }
+    if(wro->condition.has_title_regex) {
+      regfree(&wro->condition.title_regex);
+    }
     free(wro);
   }
 
@@ -1008,6 +1023,7 @@ config_destroy(struct mwc_config *c, bool reload) {
 
   struct pointer_config *p, *p_temp;
   wl_list_for_each_safe(p, p_temp, &c->pointers, link) {
+    free(p->name);
     free(p);
   }
 
@@ -1026,9 +1042,14 @@ void
 toplevel_reapply_effects_etc(struct mwc_toplevel *toplevel) {
   toplevel_recheck_opacity_rules(toplevel);
 
-  if(toplevel->shadow != NULL && !server.config->shadows) {
+  if(toplevel->shadow != NULL) {
     wlr_scene_node_destroy(&toplevel->shadow->node);
     toplevel->shadow = NULL;
+  }
+
+  if(toplevel->border != NULL) {
+    wlr_scene_node_destroy(&toplevel->border->node);
+    toplevel->border = NULL;
   }
 }
 
@@ -1068,7 +1089,9 @@ config_reload() {
     return;
   }
 
-  /* TODO */
+  /* we dont allow for hot reloading of workspaces, that would just be chaos */
+
+  /* TODO: maybe only support adding new workspaces */
   /*struct workspace_config *wc;*/
   /*wl_list_for_each(wc, &c->workspaces, link) {*/
   /*  bool found = false;*/
@@ -1086,6 +1109,12 @@ config_reload() {
   /*  }*/
   /*}*/
 
+  struct workspace_config *wc, *wc_temp;
+  wl_list_for_each_safe(wc, wc_temp, &c->workspaces, link) {
+    free(wc->output);
+    free(wc);
+  }
+
   c->workspaces = server.config->workspaces;
 
   struct mwc_config *old_config = server.config;
@@ -1095,9 +1124,10 @@ config_reload() {
   wl_list_for_each(o, &c->outputs, link) {
     struct mwc_output *out;
     wl_list_for_each(out, &server.outputs, link) {
-      struct wlr_box output_box;
-      wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
       if(strcmp(o->name, out->wlr_output->name) == 0) {
+        struct wlr_box output_box;
+        wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
+
         if(o->width != output_box.width || o->height != output_box.height
            || o->refresh_rate - out->wlr_output->refresh > 1000) {
           output_initialize(out->wlr_output, o);
@@ -1147,6 +1177,20 @@ config_reload() {
   wl_list_for_each(out, &server.outputs, link) {
     struct mwc_workspace *w;
     wl_list_for_each(w, &out->workspaces, link) {
+
+      /* we rewire the keybinds */
+      struct keybind *k;
+      wl_list_for_each(k, &server.config->keybinds, link) {
+        if(k->action == keybind_change_workspace && (uint64_t)k->args == w->index) {
+          k->args = w;
+          k->initialized = true;
+        } else if(k->action == keybind_move_focused_toplevel_to_workspace
+                  && (uint64_t)k->args == w->index) {
+          k->args = w;
+          k->initialized = true;
+        }
+      }
+
       if(c->master_count != old_config->master_count) {
         layout_reorganize(w);
       }
@@ -1182,6 +1226,6 @@ config_reload() {
   setenv("XCURSOR_THEME", server.config->cursor_theme, true);
   setenv("XCURSOR_SIZE", cursor_size, true);
 
-  config_destroy(old_config, true);
+  config_destroy(old_config);
 }
 
