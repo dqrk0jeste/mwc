@@ -8,7 +8,6 @@
 #include "keyboard.h"
 #include "config.h"
 #include "output.h"
-#include "rendering.h"
 #include "toplevel.h"
 #include "popup.h"
 #include "layer_surface.h"
@@ -276,11 +275,13 @@ main(int argc, char *argv[]) {
   /* we also add xcursor theme env variables */
   char cursor_size[8];
   snprintf(cursor_size, sizeof(cursor_size), "%u", server.config->cursor_size);
-
   cursor_size[7] = 0;
-
-  setenv("XCURSOR_THEME", server.config->cursor_theme, true);
   setenv("XCURSOR_SIZE", cursor_size, true);
+
+  if(server.config->cursor_theme != NULL) {
+    setenv("XCURSOR_THEME", server.config->cursor_theme, true);
+  }
+
 
   /*
    * wlr_cursor *only* displays an image on screen. It does not move around
@@ -400,8 +401,12 @@ main(int argc, char *argv[]) {
   setenv("WAYLAND_DISPLAY", socket, true);
 
   /* creating a thread for the ipc to run on */
-  pthread_t thread_id;
-  pthread_create(&thread_id, NULL, run_ipc, NULL);
+  pthread_t ipc_thread;
+  pthread_create(&ipc_thread, NULL, run_ipc, NULL);
+
+  wlr_log(WLR_ERROR, "%s", server.config->dir);
+  pthread_t inotify_thread;
+  pthread_create(&inotify_thread, NULL, config_watch, server.config->dir);
 
   /* sleep a bit so the ipc starts, 0.1 seconds is probably enough */
   usleep(100000);

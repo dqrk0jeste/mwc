@@ -11,6 +11,8 @@
 #include "toplevel.h"
 #include "layout.h"
 
+#include <sys/inotify.h>
+#include <assert.h>
 #include <libinput.h>
 #include <stddef.h>
 #include <limits.h>
@@ -723,22 +725,42 @@ depricated:
   return false;
 }
 
-FILE *
-try_open_config_file() {
-  char path[512];
-  char *config_home = getenv("XDG_CONFIG_HOME");
-  if(config_home != NULL) {
-    snprintf(path, sizeof(path), "%s/mwc/mwc.conf", config_home);
+void
+get_default_config_path(char *dest, size_t size) {
+  char *default_config_path = getenv("MWC_DEFAULT_CONFIG_PATH");
+
+  if(default_config_path == NULL) {
+    default_config_path = "/usr/share/mwc/default.conf";
+    wlr_log(WLR_INFO, "no env MWC_DEFAULT_CONFIG_PATH set, using the default %s", default_config_path);
   } else {
-    char *home = getenv("HOME");
-    if(home != NULL) {
-      snprintf(path, sizeof(path), "%s/.config/mwc/mwc.conf", home);
-    } else {
-      return NULL;
-    }
+    wlr_log(WLR_INFO, "env MWC_DEFAULT_CONFIG_PATH set to %s, using it", default_config_path);
   }
 
-  return fopen(path, "r");
+  strncpy(dest, default_config_path, size);
+}
+
+bool
+get_config_path(char *dest, size_t size) {
+  char *env_conf = getenv("MWC_CONFIG_PATH");
+  if(env_conf != NULL) {
+    strncpy(dest, env_conf, size);
+    dest[size - 1] = 0;
+    return true;
+  }
+
+  char *config_home = getenv("XDG_CONFIG_HOME");
+  if(config_home != NULL) {
+    snprintf(dest, size, "%s/mwc/mwc.conf", config_home);
+    return true;
+  }
+
+  char *home = getenv("HOME");
+  if(home != NULL) {
+    snprintf(dest, size, "%s/.config/mwc/mwc.conf", home);
+    return true;
+  }
+
+  return false;
 }
 
 /* assumes the line is newline teriminated, as it should be with fgets() */
@@ -916,25 +938,38 @@ struct mwc_config *
 config_load() {
   struct mwc_config *c = calloc(1, sizeof(*c));
 
-  FILE *config_file = try_open_config_file();
-  if(config_file == NULL) {
-    wlr_log(WLR_INFO, "couldn't open config file, backing to default config");
-    char *default_config_path = getenv("MWC_DEFAULT_CONFIG_PATH");
-    if(default_config_path == NULL) {
-      default_config_path = "/usr/share/mwc/default.conf";
-      wlr_log(WLR_INFO, "no env MWC_DEFAULT_CONFIG_PATH set, using the default %s", default_config_path);
+  FILE *config_file;
+  char path[1024];
+  if(get_config_path(path, sizeof(path))) {
+    config_file = fopen(path, "r");
+    if(config_file != NULL) {
+      char *current = path;
+      char *last_slash = NULL;
+      while(*current != 0) {
+        if(*current == '/') {
+          last_slash = current;
+        }
+        current++;
+      }
+
+      assert(last_slash != NULL);
+      *last_slash = 0;
+      c->dir = strdup(path);
     } else {
-      wlr_log(WLR_INFO, "env MWC_DEFAULT_CONFIG_PATH set to %s", default_config_path);
-    }
-    config_file = fopen(default_config_path, "r");
-    if(config_file == NULL) {
-      wlr_log(WLR_ERROR, "couldn't find the default config file");
-      return NULL;
-    } else {
-      wlr_log(WLR_INFO, "using default config");
+      wlr_log(WLR_INFO, "couldn't open the config file");
+      get_default_config_path(path, sizeof(path));
+      config_file = fopen(path, "r");
     }
   } else {
-    wlr_log(WLR_INFO, "using custom config");
+    wlr_log(WLR_INFO, "couldn't get config file path, backing to default config");
+    get_default_config_path(path, sizeof(path));
+    config_file = fopen(path, "r");
+  }
+
+  if(config_file == NULL) {
+    wlr_log(WLR_ERROR, "couldn't open the default config file");
+    free(c);
+    return NULL;
   }
 
   wl_list_init(&c->keybinds);
@@ -969,6 +1004,8 @@ config_load() {
  * destroying them for the lifetime of the compositor */
 void
 config_destroy(struct mwc_config *c) {
+  free(c->dir);
+
   struct output_config *o, *o_temp;
   wl_list_for_each_safe(o, o_temp, &c->outputs, link) {
     free(o->name);
@@ -1228,4 +1265,53 @@ config_reload() {
 
   config_destroy(old_config);
 }
+
+void
+idle_reload_config(void *data) {
+  config_reload();
+}
+
+#define EVENT_SIZE (sizeof(struct inotify_event))
+#define BUF_LEN (16 * (EVENT_SIZE + 16))
+
+void *
+config_watch(void *arg) {
+  char *dir = arg;
+
+  int inotify_fd = inotify_init();
+  if(inotify_fd < 0) {
+    perror("inotify_init1");
+    return NULL;
+  }
+
+  int wd = inotify_add_watch(inotify_fd, dir, IN_MODIFY);
+  if(wd < 0) {
+    wlr_log(WLR_ERROR, "inotify failed to start");
+    close(inotify_fd);
+    return NULL;
+  }
+
+  char buffer[BUF_LEN];
+  while(1) {
+    ssize_t length = read(inotify_fd, buffer, BUF_LEN);
+    if(length < 0) {
+      wlr_log(WLR_ERROR, "inotify failed read");
+      break;
+    }
+
+    for(char *ptr = buffer; ptr < buffer + length; ptr += EVENT_SIZE + ((struct inotify_event *)ptr)->len) {
+      struct inotify_event *event = (struct inotify_event *)ptr;
+      if(event->mask & IN_MODIFY) {
+        wl_event_loop_add_idle(server.wl_event_loop, idle_reload_config, NULL);
+        wlr_log(WLR_INFO, "reloading config");
+      }
+    }
+  }
+
+  inotify_rm_watch(inotify_fd, wd);
+  close(inotify_fd);
+
+  return 0;
+}
+
 

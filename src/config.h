@@ -76,6 +76,8 @@ struct pointer_config {
 }                                     \
 
 struct mwc_config {
+  char *dir; // NULL if default
+
   struct wl_list outputs;
   struct wl_list keybinds;
   struct wl_list pointer_keybinds;
@@ -169,9 +171,6 @@ config_free_args(char **args, size_t arg_count);
 bool
 config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg_count);
 
-FILE *
-try_open_config_file();
-
 /* assumes the line is newline teriminated, as it should be with fgets() */
 bool
 config_handle_line(char *line, size_t line_number, char **keyword,
@@ -188,3 +187,6 @@ config_reload();
 
 void
 config_destroy(struct mwc_config *c);
+
+void *
+config_watch(void *data);
