@@ -145,8 +145,27 @@ cursor_handle_motion(uint32_t time) {
     server.output_layout, server.cursor->x, server.cursor->y);
   struct mwc_output *output = wlr_output->data;
 
-  /* set global active workspace */
+  /* set global active workspace and stop moving resizing if there is a fullscreened toplevel */
   if(output->active_workspace != server.active_workspace) {
+    struct mwc_workspace *prev_workspace = server.active_workspace;
+
+    if(output->active_workspace->fullscreen_toplevel != NULL) {
+      if(server.cursor_mode == MWC_CURSOR_MOVE) {
+        if(!server.grabbed_toplevel->floating) {
+          toplevel_tiled_insert_into_layout(server.grabbed_toplevel,
+                                            server.cursor->x, server.cursor->y);
+        } else {
+          server.grabbed_toplevel->workspace = prev_workspace;
+          wl_list_insert(&prev_workspace->floating_toplevels, &server.grabbed_toplevel->link);
+        }
+
+        server_reset_cursor_mode();
+        layout_set_pending_state(prev_workspace);
+      } else if(server.cursor_mode == MWC_CURSOR_RESIZE) {
+        server_reset_cursor_mode();
+      }
+    }
+
     server.active_workspace = output->active_workspace;
     ipc_broadcast_message(IPC_ACTIVE_WORKSPACE);
   }
