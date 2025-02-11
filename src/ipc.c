@@ -1,4 +1,4 @@
-#include "ipc2.h"
+#include "ipc.h"
 
 #include "mwc.h"
 #include "array.h"

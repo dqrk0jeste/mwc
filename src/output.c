@@ -7,7 +7,7 @@
 #include "rendering.h"
 #include "workspace.h"
 #include "toplevel.h"
-#include "ipc2.h"
+#include "ipc.h"
 
 #include <assert.h>
 #include <stdbool.h>
