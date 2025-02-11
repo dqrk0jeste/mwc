@@ -129,10 +129,10 @@ struct mwc_config {
   struct blur_data blur_params;
   bool shadows;
   uint32_t shadows_size;
-  WITH_SPECIFIED(struct {
+  struct {
     int32_t x;
     int32_t y;
-  }) shadows_position;
+  } shadows_position;
   float shadows_color[4];
   double shadows_blur;
 

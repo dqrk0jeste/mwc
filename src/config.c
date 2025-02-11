@@ -699,9 +699,8 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
   } else if(strcmp(keyword, "shadows_position") == 0) {
     if(arg_count < 2) goto invalid;
 
-    c->shadows_position.specified = true;
-    c->shadows_position.value.x = atoi(args[0]);
-    c->shadows_position.value.y = atoi(args[1]);
+    c->shadows_position.x = atoi(args[0]);
+    c->shadows_position.y = atoi(args[1]);
   } else if(strcmp(keyword, "shadows_color") == 0) {
     if(!parse_color_rgba_or_hex(args, arg_count, c->shadows_color)) {
       goto invalid;
@@ -924,10 +923,6 @@ config_set_default_needed_params(struct mwc_config *c) {
   }
   if(c->border_radius_location == 0) {
     c->border_radius_location = CORNER_LOCATION_ALL;
-    wlr_log(WLR_INFO, "border_radius_location not specified. using all");
-  }
-  if(c->shadows && !c->shadows_position.specified) {
-    c->shadows_position.value.x = c->shadows_position.value.y = -c->shadows_size - c->border_width;
     wlr_log(WLR_INFO, "border_radius_location not specified. using all");
   }
 }
