@@ -127,6 +127,7 @@ struct mwc_server {
   char *config_path;
 
   int *ipc_clients;
+  bool ipc_running;
 
   bool running;
 };

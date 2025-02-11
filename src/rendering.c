@@ -46,7 +46,7 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
                           height + 2 * border_width);
 
   struct clipped_region clipped_region = {
-    .area = { 0, 0, width, height },
+    .area = { border_width, border_width, width, height },
     .corner_radius = border_radius,
     .corners = border_radius_location,
   };
@@ -99,8 +99,6 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
     wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
   } else {
     wlr_scene_buffer_set_backdrop_blur(buffer, false);
-    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, false);
-    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
   }
 
   uint32_t border_radius = toplevel->fullscreen ? 0 : server.config->border_radius;
@@ -203,10 +201,16 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
   uint32_t delta = server.config->shadows_size + server.config->border_width;
 
   /* we calculate where to clip the shadow */
-  struct wlr_box toplevel_box = { 0, 0, width, height };
-  struct wlr_box shadow_box = {
+  struct wlr_box toplevel_box = {
     .x = server.config->shadows_position.value.x,
     .y = server.config->shadows_position.value.y,
+    .width = width,
+    .height = height,
+  };
+
+  struct wlr_box shadow_box = {
+    .x = 0,
+    .y = 0,
     .width = width + 2 * delta,
     .height = height + 2 *delta,
   };

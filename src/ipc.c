@@ -53,6 +53,8 @@ ipc_create_message(enum ipc_event event, char *buffer, uint32_t length) {
 
 void
 ipc_broadcast_message(enum ipc_event event) {
+  if(!server.ipc_running) return;
+
   char message[512];
   ipc_create_message(event, message, sizeof(message));
 
@@ -300,6 +302,7 @@ ipc_run(void *data) {
   if(listen(fd, 128) == -1) goto error;
 
   array_init(&server.ipc_clients);
+  server.ipc_running = true;
 
   char buffer[1024];
   while(1) {
