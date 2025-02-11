@@ -1,10 +1,11 @@
+#include <pthread.h>
 #include <scenefx/render/fx_renderer/fx_renderer.h>
 #include <scenefx/types/wlr_scene.h>
 
 #include "mwc.h"
 
 #include "helpers.h"
-#include "ipc.h"
+#include "ipc2.h"
 #include "keyboard.h"
 #include "config.h"
 #include "output.h"
@@ -402,9 +403,8 @@ main(int argc, char *argv[]) {
 
   /* creating a thread for the ipc to run on */
   pthread_t ipc_thread;
-  pthread_create(&ipc_thread, NULL, run_ipc, NULL);
+  pthread_create(&ipc_thread, NULL, ipc_run, NULL);
 
-  wlr_log(WLR_ERROR, "%s", server.config->dir);
   pthread_t inotify_thread;
   pthread_create(&inotify_thread, NULL, config_watch, server.config->dir);
 
@@ -420,6 +420,8 @@ main(int argc, char *argv[]) {
   /* run the wayland event loop. */
   wlr_log(WLR_INFO, "running mwc on WAYLAND_DISPLAY=%s", socket);
   wl_display_run(server.wl_display);
+
+  unlink(IPC_PATH);
 
   /* Once wl_display_run returns, we destroy all clients then shut down the
    * server. */

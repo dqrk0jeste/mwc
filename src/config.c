@@ -1268,6 +1268,7 @@ config_reload() {
 
 void
 idle_reload_config(void *data) {
+  wlr_log(WLR_INFO, "reloading config");
   config_reload();
 }
 
@@ -1280,7 +1281,7 @@ config_watch(void *arg) {
 
   int inotify_fd = inotify_init();
   if(inotify_fd < 0) {
-    perror("inotify_init1");
+    wlr_log(WLR_ERROR, "inotify failed to start");
     return NULL;
   }
 
@@ -1303,7 +1304,6 @@ config_watch(void *arg) {
       struct inotify_event *event = (struct inotify_event *)ptr;
       if(event->mask & IN_MODIFY) {
         wl_event_loop_add_idle(server.wl_event_loop, idle_reload_config, NULL);
-        wlr_log(WLR_INFO, "reloading config");
       }
     }
   }
@@ -1311,7 +1311,7 @@ config_watch(void *arg) {
   inotify_rm_watch(inotify_fd, wd);
   close(inotify_fd);
 
-  return 0;
+  return NULL;
 }
 
 
