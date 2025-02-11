@@ -4,7 +4,7 @@
 #   - toplevel class
 #   - toplevel title
 
-mwc-ipc | while read -r line; do
+mwc-ipc subscribe | while read -r line; do
   # if the line starts with active-toplevel
   if [[ "$line" == active-toplevel* ]]; then
     # we extract the arguments and take the third one - title
