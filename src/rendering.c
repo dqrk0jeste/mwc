@@ -23,7 +23,7 @@ extern struct mwc_server server;
 void
 toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   uint32_t border_width = server.config->border_width;
-  uint32_t border_radius = max(server.config->border_radius, 1);
+  uint32_t border_radius = server.config->border_radius;
   enum corner_location border_radius_location = server.config->border_radius_location;
 
   float *border_color = toplevel->fullscreen
@@ -220,7 +220,7 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
 
   struct clipped_region clipped_region = {
     .area = intersection_box,
-    .corner_radius = max(server.config->border_radius, 1),
+    .corner_radius = server.config->border_radius,
     .corners = server.config->border_radius_location,
   };
 
