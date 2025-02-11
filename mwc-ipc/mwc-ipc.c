@@ -1,122 +1,82 @@
-/* although you can create your own ipc client implementation,
- * you are highly advised to use this one (installed globally as `mwc-ipc`)
- * to get ipc messages from the server. see examples/active-workspace.sh */
-#include <assert.h>
-#include <signal.h>
+#include "ipc_shared.h"
+
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <time.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
 
-#define MWC_PIPE "/tmp/mwc/ipc"
-#define SEPARATOR "\x1E"
+void
+ipc_subscribe(int fd) {
+  if(write(fd, "subscribe", strlen("subscribe")) < 0) {
+    printf("failed to write the message, is the server running?\n");
+    return;
+  };
 
-static bool interupted = false;
-const char letters[] = "abcdefghijklmnopqrstuvwxyz";
+  char buffer[1024];
+  while(1) {
+    ssize_t len = read(fd, buffer, sizeof(buffer) - 1);
+    if(len <= 0) return;
 
-static void sigint_handler(int signum) {
-  /* dont panic if broken pipe */
-  interupted = true;
+    buffer[len] = 0;
+    printf("%s", buffer);
+    fflush(stdout);
+  }
 }
 
-void generate_random_name(char *buffer, uint32_t length, uint32_t buffer_size) {
-  assert(buffer_size >= 9 + length + 1);
+void
+ipc_simple(int fd, char *message) {
+  if(write(fd, message, strlen(message)) < 0) {
+    printf("failed to write the message, is the server running?\n");
+    return;
+  };
 
-  strcpy(buffer, "/tmp/mwc/");
-  for(size_t i = 0; i < length; i++) {
-    buffer[9 + i] = letters[rand() % (sizeof(letters) - 1)];
-  }
-  buffer[9 + length] = 0;
+  char buffer[1024];
+  ssize_t len = read(fd, buffer, sizeof(buffer) - 1);
+  if(len <= 0) return;
+
+  buffer[len] = 0;
+  printf("%s", buffer);
+  fflush(stdout);
 }
 
-int main(int argc, char **argv) {
-  struct sigaction sa;
-  sa.sa_handler = sigint_handler;
-  sa.sa_flags = 0;
-  sigemptyset(&sa.sa_mask);
-
-  if(sigaction(SIGINT, &sa, NULL) == -1) {
-    perror("error setting up sigint handler");
-    return 1;
+int
+main(int argc, char *argv[]) {
+  if(argc < 2 || strcmp(argv[1], "-h") == 0) {
+    fprintf(stderr,
+            "usage: mwc-ipc message\n"
+            "where message is one of\n"
+            "  subscribe - receive all the events from the compositor\n"
+            "  toplevels - list app_ids and titles of all the toplevels\n"
+            "  layers - list namespaces of all the layers\n"
+            "  outputs - list names of all the outputs\n");
+    return 0;
   }
 
-  /* using time(0) here caused really weird behaviour when multiple instances were run
-   * at the same time, and caused hours of debugging */
-  srand(getpid());
-
-  int mwc_fd = open(MWC_PIPE, O_WRONLY);
-  if(mwc_fd == -1) {
-    perror("failed to open pipe" MWC_PIPE);
-    return 1;
-  }
-
-  char name[128];
-  generate_random_name(name, 6, sizeof(name));
-
-  if(mkfifo(name, 0622) == -1) {
-    perror("failed to create a pipe");
-    return 1;
-  }
-
-  char message_to_server[128];
-  snprintf(message_to_server, sizeof(message_to_server),
-           "subscribe" SEPARATOR "%s\n", name);
-  /* terminate the string just in case, but it should not exceed the size */
-  message_to_server[sizeof(message_to_server) - 1] = 0;
-
-  if(write(mwc_fd, message_to_server, strlen(message_to_server)) == -1) {
-    perror("failed to write to fifo");
-    return 1;
-  }
-
-  /* we immediately open so the server does not wait */
-  int fd = open(name, O_RDONLY);
+  int fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if(fd == -1) {
-    perror("failed to open pipe");
-    close(mwc_fd);
-    goto clean;
+    perror("socket");
+    return 1;
   }
 
-  /* we wont use the main pipe anymore */
-  close(mwc_fd);
+  struct sockaddr_un address = {0};
+  address.sun_family = AF_UNIX;
+  strcpy(address.sun_path, IPC_PATH);
 
-  printf("successfully created a connection over pipe '%s'\n"
-         "waiting for events...\n", name);
-
-  char buffer[512];
-  while(!interupted) {
-    int bytes_read = read(fd, buffer, sizeof(buffer) - 1);
-    if(bytes_read == -1) {
-      perror("failed to read from the pipe");
-      break;
-    }
-
-    /* if eof, that means ipc is closed, so we stop */
-    if(bytes_read == 0) break;
-
-    /* preventing overflow */
-    buffer[bytes_read] = 0;
-
-    char *line_r;
-    char *line = strtok_r(buffer, "\n", &line_r);
-    while(line != NULL) {
-      printf("%s\n", line);
-      fflush(stdout);
-
-      line = strtok_r(NULL, "\n", &line_r);
-    }
+  if(connect(fd, (struct sockaddr *)&address, sizeof(address)) == -1) {
+    perror("connect");
+    close(fd);
+    return 1;
   }
 
-clean:
-  printf("closing...\n");
+  if(strcmp(argv[1], "subscribe") == 0) {
+    ipc_subscribe(fd);
+  } else {
+    ipc_simple(fd, argv[1]);
+  }
+
   close(fd);
-  remove(name);
-  return !interupted;
+
+  return 0;
 }

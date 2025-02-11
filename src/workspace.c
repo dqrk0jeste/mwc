@@ -4,7 +4,7 @@
 
 #include "layout.h"
 #include "mwc.h"
-#include "ipc.h"
+#include "ipc2.h"
 #include "keybinds.h"
 #include "layer_surface.h"
 #include "something.h"

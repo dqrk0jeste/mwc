@@ -6,6 +6,7 @@ PKGS=scenefx wlroots-0.18 wayland-server xkbcommon libinput
 CFLAGS_PKG_CONFIG!=$(PKG_CONFIG) --cflags $(PKGS)
 CFLAGS+=$(CFLAGS_PKG_CONFIG)
 CFLAGS+=-Ibuild/protocols
+CFLAGS+=-Iutil
 ifdef DEBUG
 CFLAGS += -g -fsanitize=address,undefined
 endif
@@ -45,7 +46,7 @@ build/mwc: $(OBJ_FILES)
 	$(CC) $^ $> $(CFLAGS) $(LDFLAGS) $(LIBS) -o $@
 
 build/mwc-ipc: mwc-ipc/mwc-ipc.c
-	$(CC) $< -o $@
+	$(CC) $< -Iutil -o $@
 
 install: build/mwc build/mwc-ipc default.conf mwc-portals.conf mwc.desktop
 	install -Dm755 build/mwc "/usr/local/bin/mwc"; \
@@ -65,4 +66,4 @@ uninstall:
 clean:
 	rm -rf build 2>/dev/null
 
-.PHONY: all clean install uninstall
+.PHONY: all build/mwc-ipc clean install uninstall

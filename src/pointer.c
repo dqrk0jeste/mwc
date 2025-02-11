@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "keybinds.h"
-#include "ipc.h"
+#include "ipc2.h"
 #include "layout.h"
 #include "mwc.h"
 #include "toplevel.h"

@@ -4,6 +4,7 @@
 -I/usr/include/libdrm
 
 -Ibuild/protocols
+-Iutil
 
 -DWLR_USE_UNSTABLE
 
