@@ -1,3 +1,4 @@
+#include <regex.h>
 #include <scenefx/types/fx/blur_data.h>
 #include <scenefx/types/fx/corner_location.h>
 
@@ -90,6 +91,38 @@ void bake_bezier_curve_points(struct mwc_config *c) {
 }
 
 bool
+config_add_layer_rule(struct mwc_config *c, char *regex, char *predicate,
+                      char **args, size_t arg_count) {
+    struct layer_rule_regex condition;
+    if(strcmp(regex, "_") == 0) {
+      condition.has = false;
+    } else {
+      regex_t compiled;
+      if(regcomp(&compiled, regex, REG_EXTENDED) != 0) {
+        wlr_log(WLR_ERROR, "%s is not a valid regex", regex);
+        regfree(&compiled);
+        return false;
+      }
+      condition.regex = compiled;
+      condition.has = true;
+    }
+
+  if(strcmp(predicate, "blur") == 0) {
+    struct layer_rule_blur *lr = calloc(1, sizeof(*lr));
+    lr->condition = condition;
+    wl_list_insert(&c->layer_rules.blur, &lr->link);
+  } else {
+    wlr_log(WLR_ERROR, "invalid layer_rule %s", predicate);
+    if(condition.has) {
+      regfree(&condition.regex);
+    }
+    return false;
+  }
+
+  return true;
+}
+
+bool
 config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_regex,
                        char *predicate, char **args, size_t arg_count) {
   struct window_rule_regex condition;
@@ -157,6 +190,15 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
     window_rule->inactive_value = arg_count > 1 ? clamp(atof(args[1]), 0.0, 1.0) : window_rule->active_value;
 
     wl_list_insert(&c->window_rules.opacity, &window_rule->link);
+  } else {
+    wlr_log(WLR_ERROR, "invalid window_rule %s", predicate);
+    if(condition.has_app_id_regex) {
+      regfree(&condition.app_id_regex);
+    }
+    if(condition.has_title_regex) {
+      regfree(&condition.title_regex);
+    }
+    return false;
   }
 
   return true;
@@ -705,6 +747,10 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     if(!parse_color_rgba_or_hex(args, arg_count, c->shadows_color)) {
       goto invalid;
     }
+  } else if(strcmp(keyword, "layer_rule") == 0) {
+    if(arg_count < 2) goto invalid;
+    
+    config_add_layer_rule(c, args[0], args[1], &args[2], arg_count - 2);
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
@@ -975,6 +1021,7 @@ config_load() {
   wl_list_init(&c->window_rules.floating);
   wl_list_init(&c->window_rules.size);
   wl_list_init(&c->window_rules.opacity);
+  wl_list_init(&c->layer_rules.blur);
 
   /* you aint gonna have lines longer than 1kB */
   char line_buffer[1024] = {0};
@@ -1047,6 +1094,15 @@ config_destroy(struct mwc_config *c) {
       regfree(&wro->condition.title_regex);
     }
     free(wro);
+  }
+
+  struct layer_rule_blur *lrb, *lrb_temp;
+  wl_list_for_each_safe(lrb, lrb_temp, &c->layer_rules.blur, link) {
+    if(lrb->condition.has) {
+      regfree(&lrb->condition.regex);
+    }
+
+    free(lrb);
   }
 
   free(c->keymap_layouts);

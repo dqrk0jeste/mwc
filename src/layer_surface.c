@@ -1,7 +1,9 @@
+#include <regex.h>
 #include <scenefx/types/wlr_scene.h>
 
 #include "layer_surface.h"
 
+#include "config.h"
 #include "mwc.h"
 #include "popup.h"
 #include "output.h"
@@ -100,6 +102,18 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
 }
 
 void
+iter_scene_buffer_apply_blur(struct wlr_scene_buffer *buffer,
+                             int sx, int sy, void *data) {
+  if(server.config->blur) {
+    wlr_scene_buffer_set_backdrop_blur(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
+  } else {
+    wlr_scene_buffer_set_backdrop_blur(buffer, false);
+  }
+}
+
+void
 layer_surface_handle_map(struct wl_listener *listener, void *data) {
   struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, map);
   struct wlr_layer_surface_v1 *wlr_layer_surface = layer_surface->wlr_layer_surface;
@@ -108,6 +122,12 @@ layer_surface_handle_map(struct wl_listener *listener, void *data) {
   struct mwc_output *output = wlr_layer_surface->output->data;
 
   wlr_scene_node_raise_to_top(&layer_surface->scene->tree->node);
+  struct layer_rule_blur *b;
+  wl_list_for_each(b, &server.config->layer_rules.blur, link) {
+    if(!b->condition.has || regexec(&b->condition.regex, wlr_layer_surface->namespace, 0, NULL, 0) == 0) {
+      wlr_scene_node_for_each_buffer(&layer_surface->scene->tree->node, iter_scene_buffer_apply_blur, NULL);
+    }
+  }
 
   struct wlr_box output_box;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);

@@ -43,6 +43,16 @@ struct window_rule_opacity {
   double active_value;
 };
 
+struct layer_rule_regex {
+  bool has;
+  regex_t regex;
+};
+
+struct layer_rule_blur {
+  struct layer_rule_regex condition;
+  struct wl_list link;
+};
+
 struct output_config {
   char *name;
   struct wl_list link;
@@ -87,6 +97,10 @@ struct mwc_config {
     struct wl_list size;
     struct wl_list opacity;
   } window_rules;
+
+  struct {
+    struct wl_list blur;
+  } layer_rules;
 
   /* keyboard stuff */
   char *keymap_layouts;
