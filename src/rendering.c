@@ -202,8 +202,8 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
 
   /* we calculate where to clip the shadow */
   struct wlr_box toplevel_box = {
-    .x = server.config->shadows_position.value.x,
-    .y = server.config->shadows_position.value.y,
+    .x = server.config->shadows_position.x,
+    .y = server.config->shadows_position.y,
     .width = width,
     .height = height,
   };

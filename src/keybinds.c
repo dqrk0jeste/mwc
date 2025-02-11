@@ -126,7 +126,7 @@ keybind_move_focused_toplevel_to_workspace(void *data) {
 void
 keybind_resize_focused_toplevel(void *data) {
   struct mwc_toplevel *toplevel = get_pointer_focused_toplevel();
-  if(toplevel == NULL || !toplevel->floating || toplevel->animation.running) return;
+  if(toplevel == NULL || !toplevel->floating) return;
 
   uint32_t edges = toplevel_get_closest_corner(server.cursor, toplevel);
 
@@ -168,7 +168,7 @@ keybind_stop_resize_focused_toplevel(void *data) {
 void
 keybind_move_focused_toplevel(void *data) {
   struct mwc_toplevel *toplevel = get_pointer_focused_toplevel();
-  if(toplevel == NULL || toplevel->fullscreen || toplevel->animation.running) return;
+  if(toplevel == NULL || toplevel->fullscreen) return;
 
   wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "hand1");
 

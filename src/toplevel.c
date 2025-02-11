@@ -376,7 +376,12 @@ toplevel_start_move(struct mwc_toplevel *toplevel) {
   server.grab_x = server.cursor->x;
   server.grab_y = server.cursor->y;
 
-  server.grabbed_toplevel_initial_box = toplevel->current;
+  server.grabbed_toplevel_initial_box = (struct wlr_box){
+    .x = X(toplevel),
+    .y = Y(toplevel),
+    .width = toplevel->current.width,
+    .height = toplevel->current.height,
+  };
 
   if(toplevel->floating) {
     wl_list_remove(&toplevel->link);
@@ -415,7 +420,7 @@ toplevel_handle_request_move(struct wl_listener *listener, void *data) {
    * provided serial against a list of button press serials sent to this
    * client, to prevent the client from requesting this whenever they want. */
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_move);
-  if(toplevel != get_pointer_focused_toplevel() || toplevel->animation.running) return;
+  if(toplevel != get_pointer_focused_toplevel()) return;
 
   server.client_driven_move_resize = true;
   toplevel_start_move(toplevel);
@@ -431,8 +436,7 @@ toplevel_handle_request_resize(struct wl_listener *listener, void *data) {
   struct wlr_xdg_toplevel_resize_event *event = data;
 
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_resize);
-  if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()
-     || toplevel->animation.running) return;
+  if(!toplevel->floating || toplevel != get_pointer_focused_toplevel()) return;
 
   server.client_driven_move_resize = true;
   toplevel_start_resize(toplevel, event->edges);
