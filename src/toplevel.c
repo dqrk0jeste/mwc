@@ -4,7 +4,7 @@
 #include "toplevel.h"
 
 #include "config.h"
-#include "ipc2.h"
+#include "ipc.h"
 #include "layout.h"
 #include "mwc.h"
 #include "rendering.h"

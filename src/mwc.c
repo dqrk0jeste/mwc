@@ -5,7 +5,7 @@
 #include "mwc.h"
 
 #include "helpers.h"
-#include "ipc2.h"
+#include "ipc.h"
 #include "keyboard.h"
 #include "config.h"
 #include "output.h"
