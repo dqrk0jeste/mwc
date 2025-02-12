@@ -1302,10 +1302,21 @@ config_reload() {
     for(size_t i = 0; i < 4; i++) {
       wl_list_for_each(layer, &(&out->layers.background)[i], link) {
         struct layer_rule_blur *b;
+        bool found = false;
         wl_list_for_each(b, &server.config->layer_rules.blur, link) {
-          if(!b->condition.has || regexec(&b->condition.regex, layer->wlr_layer_surface->namespace, 0, NULL, 0) == 0) {
-            wlr_scene_node_for_each_buffer(&layer->scene->tree->node, iter_scene_buffer_apply_blur, NULL);
+          if(!b->condition.has || regexec(&b->condition.regex,
+                                          layer->wlr_layer_surface->namespace,
+                                          0, NULL, 0) == 0) {
+            wlr_scene_node_for_each_buffer(&layer->scene->tree->node,
+                                           iter_scene_buffer_apply_blur, (void *)1);
+            found = true;
+            break;
           }
+        }
+
+        if(!found) {
+          wlr_scene_node_for_each_buffer(&layer->scene->tree->node,
+                                         iter_scene_buffer_apply_blur, (void *)0);
         }
       }
     }
