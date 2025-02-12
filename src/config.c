@@ -160,6 +160,7 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
   } else if(strcmp(predicate, "size") == 0) {
     if(arg_count < 2) {
       wlr_log(WLR_ERROR, "invalid args to window_rule %s", predicate);
+      goto invalid;
       return false;
     }
     struct window_rule_size *window_rule = calloc(1, sizeof(*window_rule));
@@ -182,6 +183,7 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
   } else if(strcmp(predicate, "opacity") == 0) {
     if(arg_count < 1) {
       wlr_log(WLR_ERROR, "invalid args to window_rule %s", predicate);
+      goto invalid;
       return false;
     }
     struct window_rule_opacity *window_rule = calloc(1, sizeof(*window_rule));
@@ -193,16 +195,19 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
     wl_list_insert(&c->window_rules.opacity, &window_rule->link);
   } else {
     wlr_log(WLR_ERROR, "invalid window_rule %s", predicate);
-    if(condition.has_app_id_regex) {
-      regfree(&condition.app_id_regex);
-    }
-    if(condition.has_title_regex) {
-      regfree(&condition.title_regex);
-    }
-    return false;
+    goto invalid;
   }
 
   return true;
+
+invalid:
+  if(condition.has_app_id_regex) {
+    regfree(&condition.app_id_regex);
+  }
+  if(condition.has_title_regex) {
+    regfree(&condition.title_regex);
+  }
+  return false;
 }
 
 char *
