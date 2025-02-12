@@ -104,13 +104,9 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
 void
 iter_scene_buffer_apply_blur(struct wlr_scene_buffer *buffer,
                              int sx, int sy, void *data) {
-  if(server.config->blur) {
-    wlr_scene_buffer_set_backdrop_blur(buffer, true);
-    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
-    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
-  } else {
-    wlr_scene_buffer_set_backdrop_blur(buffer, false);
-  }
+  wlr_scene_buffer_set_backdrop_blur(buffer, data);
+  wlr_scene_buffer_set_backdrop_blur_optimized(buffer, data);
+  wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, data);
 }
 
 void
@@ -125,7 +121,7 @@ layer_surface_handle_map(struct wl_listener *listener, void *data) {
   struct layer_rule_blur *b;
   wl_list_for_each(b, &server.config->layer_rules.blur, link) {
     if(!b->condition.has || regexec(&b->condition.regex, wlr_layer_surface->namespace, 0, NULL, 0) == 0) {
-      wlr_scene_node_for_each_buffer(&layer_surface->scene->tree->node, iter_scene_buffer_apply_blur, NULL);
+      wlr_scene_node_for_each_buffer(&layer_surface->scene->tree->node, iter_scene_buffer_apply_blur, (void *)1);
     }
   }
 
