@@ -52,3 +52,7 @@ layer_get_list(struct mwc_output *output, enum zwlr_layer_shell_v1_layer layer);
 
 void
 layers_under_fullscreen_set_enabled(struct mwc_output *output, bool enable);
+
+void
+iter_scene_buffer_apply_blur(struct wlr_scene_buffer *buffer,
+                             int sx, int sy, void *data);

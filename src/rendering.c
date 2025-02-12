@@ -202,21 +202,24 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
 
   /* we calculate where to clip the shadow */
   struct wlr_box toplevel_box = {
-    .x = server.config->shadows_position.x,
-    .y = server.config->shadows_position.y,
+    .x = 0,
+    .y = 0,
     .width = width,
     .height = height,
   };
 
   struct wlr_box shadow_box = {
-    .x = 0,
-    .y = 0,
+    .x = server.config->shadows_position.x,
+    .y = server.config->shadows_position.y,
     .width = width + 2 * delta,
     .height = height + 2 *delta,
   };
 
   struct wlr_box intersection_box;
   wlr_box_intersection(&intersection_box, &toplevel_box, &shadow_box);
+  /* clipped region takes shadow relative coords, so we translate everything by its position */
+  intersection_box.x -= server.config->shadows_position.x;
+  intersection_box.y -= server.config->shadows_position.y;
 
   struct clipped_region clipped_region = {
     .area = intersection_box,
