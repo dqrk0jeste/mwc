@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <wayland-util.h>
 #include <wlr/util/log.h>
 #include <wlr/util/box.h>
 
@@ -55,43 +56,13 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   wlr_scene_rect_set_color(toplevel->border, border_color);
 }
 
-struct mwc_something *
-scene_tree_get_something(struct wlr_scene_tree *tree, 
-                         struct wlr_scene_tree *up_to) {
-  struct mwc_something *something = tree->node.data;
-  if(something != NULL) return something;
-
-  if(tree == up_to) return NULL;
-
-  return scene_tree_get_something(tree->node.parent, up_to);
-}
-
-struct mwc_something *
-scene_buffer_get_something(struct wlr_scene_buffer *buffer,
-                           struct wlr_scene_tree *up_to) {
-  return scene_tree_get_something(buffer->node.parent, up_to);
-}
-
 void
-iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
-                                int sx, int sy, void *data) {
-  struct mwc_toplevel *toplevel = data;
-  struct mwc_something *something = scene_buffer_get_something(buffer, toplevel->scene_tree);
-  assert(something != NULL);
-
-  double opacity;
-  if(!toplevel->fullscreen || server.config->apply_opacity_when_fullscreen) {
-    opacity = toplevel == server.focused_toplevel
-      ? toplevel->active_opacity
-      : toplevel->inactive_opacity;
-  } else {
-    opacity = 1.0;
-  }
-
+scene_buffer_apply_effects(struct wlr_scene_buffer *buffer, double opacity,
+                           uint32_t border_radius, bool is_popup) {
   wlr_scene_buffer_set_opacity(buffer, opacity);
 
   /* we dont blur or round popups */
-  if(something->type == MWC_POPUP) return;
+  if(is_popup) return;
 
   if(server.config->blur) {
     wlr_scene_buffer_set_backdrop_blur(buffer, true);
@@ -101,17 +72,51 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
     wlr_scene_buffer_set_backdrop_blur(buffer, false);
   }
 
-  uint32_t border_radius = toplevel->fullscreen
-    ? 0
-    : max(server.config->border_radius - server.config->border_width, 0);
   wlr_scene_buffer_set_corner_radius(buffer, border_radius,
                                      server.config->border_radius_location);
 }
 
 void
-toplevel_buffer_apply_effects(struct mwc_toplevel *toplevel) {
-  wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
-                                 iter_scene_buffer_apply_effects, toplevel);
+scene_tree_apply_effects(struct wlr_scene_tree *tree, double opacity,
+                         uint32_t border_radius, bool is_popup) {
+  struct wlr_scene_node *node;
+  wl_list_for_each(node, &tree->children, link) {
+    switch(node->type) {
+      case WLR_SCENE_NODE_BUFFER: {
+        struct wlr_scene_buffer *buffer = wlr_scene_buffer_from_node(node);
+        scene_buffer_apply_effects(buffer, opacity, border_radius, is_popup);
+        break;
+      }
+      case WLR_SCENE_NODE_TREE: {
+        struct wlr_scene_tree *t = wlr_scene_tree_from_node(node);
+        struct mwc_something *something = t->node.data;
+        if(something != NULL) {
+          is_popup = something->type == MWC_POPUP;
+        }
+        scene_tree_apply_effects(t, opacity, border_radius, is_popup);
+        break;
+      }
+      default: break;
+    }
+  }
+}
+
+void
+toplevel_apply_effects(struct mwc_toplevel *toplevel) {
+  double opacity;
+  if(!toplevel->fullscreen || server.config->apply_opacity_when_fullscreen) {
+    opacity = toplevel == server.focused_toplevel
+      ? toplevel->active_opacity
+      : toplevel->inactive_opacity;
+  } else {
+    opacity = 1.0;
+  }
+
+  uint32_t border_radius = toplevel->fullscreen
+    ? 0
+    : max(server.config->border_radius - server.config->border_width, 0);
+
+  scene_tree_apply_effects(toplevel->scene_tree, opacity, border_radius, false);
 }
 
 void
@@ -261,7 +266,7 @@ toplevel_draw_frame(struct mwc_toplevel *toplevel) {
     toplevel_draw_shadow(toplevel);
   }
   toplevel_apply_clip(toplevel);
-  toplevel_buffer_apply_effects(toplevel);
+  toplevel_apply_effects(toplevel);
 
   return need_more_frames;
 }
