@@ -190,7 +190,9 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
     window_rule->condition = condition;
 
     window_rule->active_value = clamp(atof(args[0]), 0.0, 1.0);
-    window_rule->inactive_value = arg_count > 1 ? clamp(atof(args[1]), 0.0, 1.0) : window_rule->active_value;
+    window_rule->inactive_value = arg_count > 1
+      ? clamp(atof(args[1]), 0.0, 1.0)
+      : window_rule->active_value;
 
     wl_list_insert(&c->window_rules.opacity, &window_rule->link);
   } else {

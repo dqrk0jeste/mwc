@@ -13,6 +13,7 @@
 #include "wlr-layer-shell-unstable-v1-protocol.h"
 #include "workspace.h"
 
+#include <math.h>
 #include <stdlib.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_scene.h>
@@ -39,6 +40,8 @@ server_handle_new_layer_surface(struct wl_listener *listener, void *data) {
   struct mwc_output *output = layer_surface->wlr_layer_surface->output->data;
   wlr_fractional_scale_v1_notify_scale(layer_surface->wlr_layer_surface->surface,
                                        output->wlr_output->scale);
+  wlr_surface_set_preferred_buffer_scale(layer_surface->wlr_layer_surface->surface,
+                                         ceil(output->wlr_output->scale));
 
   enum zwlr_layer_shell_v1_layer layer = wlr_layer_surface->pending.layer;
 
@@ -97,7 +100,7 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
 	}
 
   if(layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
-    wlr_scene_optimized_blur_mark_dirty(server.scene, output->blur, output->wlr_output);
+    wlr_scene_optimized_blur_mark_dirty(output->blur);
   }
 }
 

@@ -1,4 +1,3 @@
-#include <libudev.h>
 #include <scenefx/types/wlr_scene.h>
 
 #include "toplevel.h"
@@ -16,7 +15,9 @@
 
 #include <assert.h>
 #include <limits.h>
+#include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <wayland-util.h>
 #include <wlr/types/wlr_cursor.h>
@@ -45,6 +46,8 @@ server_handle_new_toplevel(struct wl_listener *listener, void *data) {
 
   wlr_fractional_scale_v1_notify_scale(toplevel->xdg_toplevel->base->surface,
                                        toplevel->workspace->output->wlr_output->scale);
+  wlr_surface_set_preferred_buffer_scale(toplevel->xdg_toplevel->base->surface,
+                                         ceil(toplevel->workspace->output->wlr_output->scale));
   /* add foreign toplevel handler */
   toplevel->foreign_toplevel_handle =
     wlr_foreign_toplevel_handle_v1_create(server.foreign_toplevel_manager);
@@ -87,32 +90,24 @@ toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
    * reply with a configure so the client can map the surface. */
   toplevel->floating = toplevel_should_float(toplevel);
 
+  uint32_t width, height;
   if(toplevel->floating) {
-    wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
     /* we lookup window rules and send a configure */
     uint32_t width, height;
     toplevel_floating_size(toplevel, &width, &height);
-    toplevel_set_initial_state(toplevel, UINT32_MAX, UINT32_MAX, width, height);
-  } else if(wl_list_length(&toplevel->workspace->masters)
-            < server.config->master_count) {
-    wl_list_insert(toplevel->workspace->masters.prev, &toplevel->link);
-    layout_set_pending_state(toplevel->workspace);
   } else {
-    wl_list_insert(toplevel->workspace->slaves.prev, &toplevel->link);
-    layout_set_pending_state(toplevel->workspace);
-  }
-
-  if(!toplevel->floating && toplevel->workspace->fullscreen_toplevel != NULL) {
-    /* layout_set_pending_state() does not send any configures if there is
-     * a fullscreen toplevel on the workspace, but we need to send something
-     * in order to respect the protocol. we dont really care,
-     * as it is not going to be shown anyway
-     * note: using just 0, 0, 0, 0 caused the toplevel to become unresponsive, because wlr_scene
-     * wouldnt send frame done events. we fix this by setting the position to something on the current output */
     struct mwc_output *output = toplevel->workspace->output;
-    toplevel_set_initial_state(toplevel, output->usable_area.x, output->usable_area.y, 0, 0);
+
+    uint32_t master_count = wl_list_length(&toplevel->workspace->masters);
+    uint32_t slave_count = wl_list_length(&toplevel->workspace->slaves);
+    if(master_count < server.config->master_count) {
+      calculate_masters_dimensions(output, master_count + 1, slave_count, &width, &height);
+    } else {
+      calculate_slaves_dimensions(output, slave_count + 1, &width, &height);
+    }
   }
 
+  wlr_xdg_toplevel_set_size(toplevel->xdg_toplevel, width, height);
   /* we lie that its maximized so it behaves better */
   wlr_xdg_toplevel_set_maximized(toplevel->xdg_toplevel, true);
   wlr_xdg_toplevel_set_tiled(toplevel->xdg_toplevel, WLR_EDGE_TOP & WLR_EDGE_RIGHT
@@ -166,9 +161,22 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
   toplevel->mapped = true;
   toplevel->dirty = false;
 
-  /* add this toplevel to the scene tree */
-  struct wlr_scene_tree *tree = toplevel->floating ? server.floating_tree : server.tiled_tree;
-  toplevel->scene_tree = wlr_scene_xdg_surface_create(tree, toplevel->xdg_toplevel->base);
+  if(toplevel->floating) {
+    wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
+    toplevel->scene_tree = wlr_scene_xdg_surface_create(server.floating_tree,
+                                                        toplevel->xdg_toplevel->base);
+  } else {
+    if(wl_list_length(&toplevel->workspace->masters) < server.config->master_count) {
+      wl_list_insert(toplevel->workspace->masters.prev, &toplevel->link);
+    } else {
+      wl_list_insert(toplevel->workspace->slaves.prev, &toplevel->link);
+    }
+
+    toplevel->scene_tree = wlr_scene_xdg_surface_create(server.tiled_tree,
+                                                        toplevel->xdg_toplevel->base);
+    layout_set_pending_state(toplevel->workspace);
+  }
+
   /* output at 0, 0 would get this toplevel flashed if its on some other output,
    * so we move it to its own, which will cause it to set frame event which
    * will place it where it belongs */
@@ -199,15 +207,23 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
     }
 
     struct wlr_box output_box = toplevel->workspace->output->usable_area;
-    if(toplevel->pending.x == UINT32_MAX) {
-      toplevel->pending.x = output_box.x + (output_box.width - toplevel->pending.width) / 2;
-      toplevel->pending.y = output_box.y + (output_box.height - toplevel->pending.height) / 2;
-    }
-
-    toplevel->animation.initial.x = output_box.x + output_box.width / 2;
-    toplevel->animation.initial.y = output_box.y + output_box.height / 2;
-
+    toplevel->pending.x = output_box.x + (output_box.width - toplevel->pending.width) / 2;
+    toplevel->pending.y = output_box.y + (output_box.height - toplevel->pending.height) / 2;
   } 
+
+  /* we patch its startup animation */
+  if(server.config->animations) {
+    toplevel->animation.should_animate = true;
+    toplevel->animation.initial = (struct wlr_box){
+      .x = toplevel->pending.x + toplevel->pending.width / 2,
+      .y = toplevel->pending.y + toplevel->pending.height / 2,
+      .width = 1,
+      .height = 1,
+    };
+  } else {
+    toplevel->animation.should_animate = false;
+  }
+
 
   toplevel_commit(toplevel);
 }
@@ -216,6 +232,8 @@ void
 toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   /* called when the surface is unmapped, and should no longer be shown. */
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, unmap);
+  if(!toplevel->mapped) return;
+
   struct mwc_workspace *workspace = toplevel->workspace;
 
   /* reset the cursor mode if the grabbed toplevel was unmapped. */
@@ -631,35 +649,6 @@ cursor_jump_focused_toplevel(void) {
 }
 
 void
-toplevel_set_initial_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
-                           uint32_t width, uint32_t height) {
-  assert(!toplevel->mapped);
-
-  if(server.config->animations) {
-    toplevel->animation.should_animate = true;
-    toplevel->animation.initial = (struct wlr_box){
-      .x = x + width / 2,
-      .y = y + height / 2,
-      .width = 1,
-      .height = 1,
-    };
-  } else {
-    toplevel->animation.should_animate = false;
-  }
-
-  toplevel->pending = (struct wlr_box){
-    .x = x,
-    .y = y,
-    .width = width,
-    .height = height,
-  };
-
-  toplevel->configure_serial = wlr_xdg_toplevel_set_size(toplevel->xdg_toplevel,
-                                                         width, height);
-  toplevel->dirty = true;
-}
-
-void
 toplevel_set_pending_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
                            uint32_t width, uint32_t height) {
   assert(toplevel->mapped);
@@ -884,13 +873,14 @@ unfocus_focused_toplevel(void) {
 
 void
 focus_toplevel(struct mwc_toplevel *toplevel) {
-  assert(toplevel != NULL);
-
+  /* there has been an issue with some electron apps that do not
+   * want to map the surface, and neither want to destroy themselfs */
+  if(!toplevel->mapped) return;
   if(server.lock != NULL) return;
   if(server.exclusive) return;
   if(server.grabbed_toplevel != NULL) return;
   if(toplevel->workspace->fullscreen_toplevel != NULL
-    && toplevel != toplevel->workspace->fullscreen_toplevel) return;
+     && toplevel != toplevel->workspace->fullscreen_toplevel) return;
 
   struct mwc_toplevel *prev_toplevel = server.focused_toplevel;
   if(prev_toplevel == toplevel) return;
