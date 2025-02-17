@@ -47,7 +47,7 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
 
   struct clipped_region clipped_region = {
     .area = { border_width, border_width, width, height },
-    .corner_radius = border_radius,
+    .corner_radius = max(border_radius - border_width, 0),
     .corners = border_radius_location,
   };
   wlr_scene_rect_set_clipped_region(toplevel->border, clipped_region);
@@ -101,7 +101,9 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
     wlr_scene_buffer_set_backdrop_blur(buffer, false);
   }
 
-  uint32_t border_radius = toplevel->fullscreen ? 0 : server.config->border_radius;
+  uint32_t border_radius = toplevel->fullscreen
+    ? 0
+    : max(server.config->border_radius - server.config->border_width, 0);
   wlr_scene_buffer_set_corner_radius(buffer, border_radius,
                                      server.config->border_radius_location);
 }
@@ -244,8 +246,6 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
 
 bool
 toplevel_draw_frame(struct mwc_toplevel *toplevel) {
-  if(!toplevel->mapped) return false;
-
   bool need_more_frames = false;
   if(toplevel->animation.running) {
     if(toplevel_animation_next_tick(toplevel)) {

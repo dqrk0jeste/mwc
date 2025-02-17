@@ -22,8 +22,6 @@ struct mwc_toplevel {
 
   struct mwc_something something;
 
-  bool mapped;
-
   bool floating;
   bool fullscreen;
   /* if a floating toplevel becomes fullscreen, we keep its previous state here */
