@@ -99,7 +99,7 @@ layer_surface_handle_commit(struct wl_listener *listener, void *data) {
 		layer_surfaces_commit(output);
 	}
 
-  if(layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
+  if(server.config->blur && layer == ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND) {
     wlr_scene_optimized_blur_mark_dirty(output->blur);
   }
 }
@@ -121,10 +121,12 @@ layer_surface_handle_map(struct wl_listener *listener, void *data) {
   struct mwc_output *output = wlr_layer_surface->output->data;
 
   wlr_scene_node_raise_to_top(&layer_surface->scene->tree->node);
-  struct layer_rule_blur *b;
-  wl_list_for_each(b, &server.config->layer_rules.blur, link) {
-    if(!b->condition.has || regexec(&b->condition.regex, wlr_layer_surface->namespace, 0, NULL, 0) == 0) {
-      wlr_scene_node_for_each_buffer(&layer_surface->scene->tree->node, iter_scene_buffer_apply_blur, (void *)1);
+  if(server.config->blur) {
+    struct layer_rule_blur *b;
+    wl_list_for_each(b, &server.config->layer_rules.blur, link) {
+      if(!b->condition.has || regexec(&b->condition.regex, wlr_layer_surface->namespace, 0, NULL, 0) == 0) {
+        wlr_scene_node_for_each_buffer(&layer_surface->scene->tree->node, iter_scene_buffer_apply_blur, (void *)1);
+      }
     }
   }
 
@@ -260,7 +262,7 @@ layer_surfaces_commit_layer(struct mwc_output *output,
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &full_area);
 
   struct mwc_layer_surface *l;
-	wl_list_for_each(l, list, link) {
+	wl_list_for_each_reverse(l, list, link) {
 		if((l->wlr_layer_surface->current.exclusive_zone > 0) != exclusive) continue;
 
 		wlr_scene_layer_surface_v1_configure(l->scene, &full_area, &output->usable_area);

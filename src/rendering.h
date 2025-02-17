@@ -55,4 +55,4 @@ void
 workspace_draw_frame(struct mwc_workspace *workspace);
 
 void
-toplevel_buffer_apply_effects(struct mwc_toplevel *toplevel);
+toplevel_apply_effects(struct mwc_toplevel *toplevel);

@@ -173,12 +173,13 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
   }
 
   /* output at 0, 0 would get this toplevel flashed if its on some other output,
-   * so we move it to its own, which will cause it to set frame event which
+   * so we move it to its own, which will cause it to send frame event which
    * will place it where it belongs */
   wlr_scene_node_set_position(&toplevel->scene_tree->node,
                               toplevel->workspace->output->usable_area.x,
                               toplevel->workspace->output->usable_area.y);
   
+  /* this often breaks the toplevel, but what can i do about it? */
   if(toplevel->workspace->fullscreen_toplevel != NULL) {
     wlr_scene_node_set_enabled(&toplevel->scene_tree->node, false);
   }
