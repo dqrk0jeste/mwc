@@ -126,8 +126,6 @@ toplevel_handle_commit(struct wl_listener *listener, void *data) {
     return;
   }
 
-  if(!toplevel->mapped) return;
-
   if(toplevel->resizing) {
     toplevel_commit(toplevel);
     return;
@@ -157,9 +155,6 @@ void
 toplevel_handle_map(struct wl_listener *listener, void *data) {
   /* called when the surface is mapped, or ready to display on-screen. */
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, map);
-
-  toplevel->mapped = true;
-  toplevel->dirty = false;
 
   if(toplevel->floating) {
     wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
@@ -232,7 +227,6 @@ void
 toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   /* called when the surface is unmapped, and should no longer be shown. */
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, unmap);
-  if(!toplevel->mapped) return;
 
   struct mwc_workspace *workspace = toplevel->workspace;
 
@@ -651,8 +645,6 @@ cursor_jump_focused_toplevel(void) {
 void
 toplevel_set_pending_state(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y,
                            uint32_t width, uint32_t height) {
-  assert(toplevel->mapped);
-
   struct wlr_box pending = {
     .x = x,
     .y = y,
@@ -704,7 +696,8 @@ toplevel_commit(struct mwc_toplevel *toplevel) {
 
 void
 toplevel_set_fullscreen(struct mwc_toplevel *toplevel) {
-  if(!toplevel->mapped) return;
+  if(!toplevel->xdg_toplevel->base->surface->mapped) return;
+
   if(toplevel->workspace->fullscreen_toplevel != NULL) return;
   if(toplevel == server.grabbed_toplevel) return;
 
@@ -875,7 +868,6 @@ void
 focus_toplevel(struct mwc_toplevel *toplevel) {
   /* there has been an issue with some electron apps that do not
    * want to map the surface, and neither want to destroy themselfs */
-  if(!toplevel->mapped) return;
   if(server.lock != NULL) return;
   if(server.exclusive) return;
   if(server.grabbed_toplevel != NULL) return;
