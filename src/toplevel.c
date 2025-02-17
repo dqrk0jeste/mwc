@@ -219,7 +219,6 @@ toplevel_handle_map(struct wl_listener *listener, void *data) {
     toplevel->animation.should_animate = false;
   }
 
-
   toplevel_commit(toplevel);
 }
 
@@ -1007,13 +1006,13 @@ toplevel_get_closest_corner(struct wlr_cursor *cursor,
                             struct mwc_toplevel *toplevel) {
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
-  uint32_t toplevel_x = toplevel->scene_tree->node.x + geometry.x;
-  uint32_t toplevel_y = toplevel->scene_tree->node.y + geometry.y;
+  uint32_t toplevel_x = X(toplevel);
+  uint32_t toplevel_y = Y(toplevel);
 
   uint32_t left_dist = cursor->x - toplevel_x;
-  uint32_t right_dist = geometry.width - left_dist;
+  uint32_t right_dist = toplevel->current.width - left_dist;
   uint32_t top_dist = cursor->y - toplevel_y;
-  uint32_t bottom_dist = geometry.height - top_dist;
+  uint32_t bottom_dist = toplevel->current.height - top_dist;
 
   uint32_t edges = 0;
   if(left_dist <= right_dist) {

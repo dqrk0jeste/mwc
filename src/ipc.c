@@ -279,6 +279,7 @@ ipc_handle_simple(char *request, int fd) {
   }
 
   write(fd, message, len);
+  free(message);
   close(fd);
 }
 
