@@ -4,7 +4,6 @@
 #include "config.h"
 #include "toplevel.h"
 #include "wlr/util/box.h"
-#include "wlr/util/log.h"
 
 #include <stdint.h>
 #include <wayland-util.h>
@@ -108,11 +107,7 @@ layout_set_pending_state(struct mwc_workspace *workspace) {
     uint32_t master_y = output->usable_area.y + outer_gaps
       + border_width;
 
-    if(m->mapped) {
-      toplevel_set_pending_state(m, master_x, master_y, master_width, master_height);
-    } else {
-      toplevel_set_initial_state(m, master_x, master_y, master_width, master_height);
-    }
+    toplevel_set_pending_state(m, master_x, master_y, master_width, master_height);
     i++;
   }
 
@@ -131,11 +126,7 @@ layout_set_pending_state(struct mwc_workspace *workspace) {
       + i * (slave_height + inner_gaps * 2 + 2 * border_width)
       + border_width;
 
-    if(s->mapped) {
-      toplevel_set_pending_state(s, slave_x, slave_y, slave_width, slave_height);
-    } else {
-      toplevel_set_initial_state(s, slave_x, slave_y, slave_width, slave_height);
-    }
+    toplevel_set_pending_state(s, slave_x, slave_y, slave_width, slave_height);
     i++;
   }
 }

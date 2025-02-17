@@ -2,7 +2,7 @@ PKG_CONFIG?=pkg-config
 WAYLAND_PROTOCOLS!=$(PKG_CONFIG) --variable=pkgdatadir wayland-protocols
 WAYLAND_SCANNER!=$(PKG_CONFIG) --variable=wayland_scanner wayland-scanner
 
-PKGS=scenefx wlroots-0.18 wayland-server xkbcommon libinput
+PKGS=scenefx-0.2 wlroots-0.18 wayland-server xkbcommon libinput
 CFLAGS_PKG_CONFIG!=$(PKG_CONFIG) --cflags $(PKGS)
 CFLAGS+=$(CFLAGS_PKG_CONFIG)
 CFLAGS+=-Ibuild/protocols
@@ -11,6 +11,7 @@ ifdef DEBUG
 CFLAGS += -g -fsanitize=address,undefined
 endif
 LIBS!=$(PKG_CONFIG) --libs $(PKGS)
+LIBS += -lm
 
 SRC_FILES := $(wildcard src/*.c)
 OBJ_FILES := $(patsubst src/%.c, build/%.o, $(SRC_FILES))
@@ -66,4 +67,4 @@ uninstall:
 clean:
 	rm -rf build 2>/dev/null
 
-.PHONY: all build/mwc-ipc clean install uninstall
+.PHONY: all clean install uninstall
