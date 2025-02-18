@@ -497,7 +497,6 @@ keybind_focused_toplevel_toggle_floating(void *data) {
 
   wl_list_insert(&toplevel->workspace->floating_toplevels, &toplevel->link);
 
-  struct wlr_box output_box = toplevel->workspace->output->usable_area;
   uint32_t width, height;
   toplevel_floating_size(toplevel, &width, &height);
   toplevel_set_pending_state(toplevel, UINT32_MAX, UINT32_MAX, width, height);

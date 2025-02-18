@@ -117,7 +117,6 @@ layer_surface_handle_map(struct wl_listener *listener, void *data) {
   struct mwc_layer_surface *layer_surface = wl_container_of(listener, layer_surface, map);
   struct wlr_layer_surface_v1 *wlr_layer_surface = layer_surface->wlr_layer_surface;
 
-  enum zwlr_layer_shell_v1_layer layer = wlr_layer_surface->pending.layer;
   struct mwc_output *output = wlr_layer_surface->output->data;
 
   wlr_scene_node_raise_to_top(&layer_surface->scene->tree->node);
