@@ -45,10 +45,6 @@ ninja -C build
 ```bash
 yay -S mwc
 ```
-or
-```bash
-yay -S mwc-git
-```
 
 ### other
 ```bash
@@ -72,7 +68,7 @@ mwc
 > you probably want to run it from a tty
 
 ## configuration
-configuration is done in a configuration file found at `$XDG_CONFIG_HOME/mwc/mwc.conf` or `$HOME/.config/mwc/mwc.conf`. if no config is found a default config will be used (you need `mwc` installed, see above).\
+configuration is done in a configuration file found at `$XDG_CONFIG_HOME/mwc/mwc.conf` or `$HOME/.config/mwc/mwc.conf`. if no config is found a default config will be used (you need `mwc` installed, see above).
 
 > note: you can use other configuration location by setting `MWC_CONFIG_PATH` before running `mwc`.
 
@@ -81,7 +77,6 @@ for detailed documentation see `examples/example.conf`. you can also find the de
 ## gallery
 <div align="center">
 <img src="assets/gallery-1.png" alt="logo" width="500">
-<img src="assets/gallery-2.png" alt="logo" width="500">
 <img src="assets/gallery-2.png" alt="logo" width="500">
 </div>
 
