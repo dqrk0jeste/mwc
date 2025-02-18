@@ -1361,6 +1361,8 @@ void *
 config_watch(void *arg) {
   char *dir = arg;
 
+  if(dir == NULL) return NULL;
+
   int inotify_fd = inotify_init();
   if(inotify_fd < 0) {
     wlr_log(WLR_ERROR, "inotify failed to start");
