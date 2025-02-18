@@ -76,8 +76,6 @@ change_workspace(struct mwc_workspace *workspace, bool keep_focus) {
     return;
   }
 
-  struct mwc_workspace *prev_workspace = server.active_workspace;
-
   /* else remove all the toplevels on that workspace */
   struct mwc_toplevel *t;
   wl_list_for_each(t, &workspace->output->active_workspace->floating_toplevels, link) {

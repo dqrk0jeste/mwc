@@ -93,7 +93,6 @@ toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
   uint32_t width, height;
   if(toplevel->floating) {
     /* we lookup window rules and send a configure */
-    uint32_t width, height;
     toplevel_floating_size(toplevel, &width, &height);
   } else {
     struct mwc_output *output = toplevel->workspace->output;
@@ -474,7 +473,6 @@ void
 toplevel_handle_request_fullscreen(struct wl_listener *listener, void *data) {
   struct mwc_toplevel *toplevel = wl_container_of(listener, toplevel, request_fullscreen);
 
-  struct mwc_output *output = toplevel->workspace->output;
   if(toplevel->xdg_toplevel->requested.fullscreen) {
     toplevel_set_fullscreen(toplevel);
   } else {
@@ -563,9 +561,6 @@ toplevel_matches_window_rule(struct mwc_toplevel *toplevel,
 
 void
 toplevel_floating_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
-  char *app_id = toplevel->xdg_toplevel->app_id;
-  char *title = toplevel->xdg_toplevel->title;
-
   struct window_rule_size *w;
   wl_list_for_each(w, &server.config->window_rules.size, link) {
     if(toplevel_matches_window_rule(toplevel, &w->condition)) {
@@ -602,9 +597,6 @@ toplevel_should_float(struct mwc_toplevel *toplevel) {
     == toplevel->xdg_toplevel->current.min_width)
     || toplevel->xdg_toplevel->parent != NULL;
   if(b) return true;
-
-  char *app_id = toplevel->xdg_toplevel->app_id;
-  char *title = toplevel->xdg_toplevel->title;
 
   struct window_rule_float *w;
   wl_list_for_each(w, &server.config->window_rules.floating, link) {
@@ -744,7 +736,6 @@ toplevel_unset_fullscreen(struct mwc_toplevel *toplevel) {
   if(toplevel->workspace->fullscreen_toplevel != toplevel) return;
 
   struct mwc_workspace *workspace = toplevel->workspace;
-  struct mwc_output *output = workspace->output;
 
   workspace->fullscreen_toplevel = NULL;
   toplevel->fullscreen = false;
@@ -1005,8 +996,6 @@ toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_
 uint32_t
 toplevel_get_closest_corner(struct wlr_cursor *cursor,
                             struct mwc_toplevel *toplevel) {
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
-
   uint32_t toplevel_x = X(toplevel);
   uint32_t toplevel_y = Y(toplevel);
 
@@ -1034,7 +1023,6 @@ toplevel_get_closest_corner(struct wlr_cursor *cursor,
 void
 toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uint32_t y) {
   struct mwc_workspace *workspace = server.active_workspace;
-  struct mwc_output *output = workspace->output; 
 
   toplevel->workspace = workspace;
 
@@ -1057,8 +1045,8 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
      *   - its last master
      *   - cursor is on left (top) */
     if((under_cursor_is_master && &under_cursor->link == workspace->masters.prev)
-       || under_cursor_is_master && on_left_side
-       || !under_cursor_is_master && on_top_side) {
+       || (under_cursor_is_master && on_left_side)
+       || (!under_cursor_is_master && on_top_side)) {
       wl_list_insert(under_cursor->link.prev, &toplevel->link);
     } else {
       wl_list_insert(&under_cursor->link, &toplevel->link);
