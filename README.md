@@ -46,11 +46,11 @@ ninja -C build
 yay -S mwc
 ```
 
-### other
+### other distros
 ```bash
 git clone https://github.com/dqrk0jeste/mwc
 cd mwc
-meson setup build --prefix=/usr --buildtype=release
+meson setup build --prefix=/usr/local --buildtype=release
 ninja -C build install
 ```
 
