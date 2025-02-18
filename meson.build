@@ -2,7 +2,7 @@ project(
   'mwc',
   'c',
   version: '0.1.0',
-	license: 'MIT',
+  license: 'MIT',
 )
 
 add_project_arguments('-DWLR_USE_UNSTABLE', language: 'c')
