@@ -1174,7 +1174,6 @@ layout_reorganize(struct mwc_workspace *workspace) {
       slave_count--;
     }
   }
-
 }
 
 void
@@ -1399,5 +1398,4 @@ config_watch(void *arg) {
 
   return NULL;
 }
-
 

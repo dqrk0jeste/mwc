@@ -68,12 +68,12 @@ scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
 
   /* some clients, notably firefox, have basically everything as subsurfaces.
    * this is a hacky way that will (usually) detect things that are not a main window and skip them */
-  if(buffer->buffer != NULL) {
-    uint32_t buffer_width = buffer->buffer->width;
-    uint32_t buffer_height = buffer->buffer->height;
+  if(buffer->buffer == NULL) return;
 
-    if(buffer_width < 0.5 * geometry_width || buffer_height < 0.5 * geometry_height) return;
-  }
+  uint32_t buffer_width = buffer->buffer->width;
+  uint32_t buffer_height = buffer->buffer->height;
+
+  if(buffer_width < 0.5 * geometry_width || buffer_height < 0.5 * geometry_height) return;
 
   if(server.config->blur) {
     wlr_scene_buffer_set_backdrop_blur(buffer, true);
