@@ -985,11 +985,11 @@ toplevel_get_primary_output(struct mwc_toplevel *toplevel) {
 void
 toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width = toplevel->animation.running
-    ? min(toplevel->animation.current.width, toplevel->current.width)
+    ? toplevel->animation.current.width
     : toplevel->current.width;
 
   *height = toplevel->animation.running
-    ? min(toplevel->animation.current.height, toplevel->current.height)
+    ? toplevel->animation.current.height
     : toplevel->current.height;
 }
 
