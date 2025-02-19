@@ -1232,6 +1232,8 @@ config_reload() {
         if(o->x != output_box.x || o->y != output_box.y) {
           output_add_to_layout(out, o);
         }
+
+        layer_surfaces_commit(out);
       }
     }
   }

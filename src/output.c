@@ -93,6 +93,7 @@ server_handle_new_output(struct wl_listener *listener, void *data) {
 
   wl_list_insert(&server.outputs, &output->link);
 
+  output->scene_output = wlr_scene_output_create(server.scene, output->wlr_output);
   struct wlr_box output_box = output_add_to_layout(output, output_config);
 
   /* if there were some existing workspaces then we reconfigure them */
@@ -187,8 +188,7 @@ output_add_to_layout(struct mwc_output *output, struct output_config *config) {
     layout = wlr_output_layout_add_auto(server.output_layout, output->wlr_output);
   }
 
-  struct wlr_scene_output *scene_output = wlr_scene_output_create(server.scene, output->wlr_output);
-  wlr_scene_output_layout_add_output(server.scene_layout, layout, scene_output);
+  wlr_scene_output_layout_add_output(server.scene_layout, layout, output->scene_output);
 
   struct wlr_box output_box;
   wlr_output_layout_get_box(server.output_layout, output->wlr_output, &output_box);
