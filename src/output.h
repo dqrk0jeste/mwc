@@ -10,6 +10,7 @@
 struct mwc_output {
 	struct wl_list link;
 	struct wlr_output *wlr_output;
+  struct wlr_scene_output *scene_output;
   struct wl_list workspaces;
   struct wlr_box usable_area;
 
