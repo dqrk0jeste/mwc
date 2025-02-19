@@ -285,6 +285,9 @@ output_get_relative(struct mwc_output *output, enum mwc_direction direction) {
   wlr_output_layout_get_box(server.output_layout,
                             output->wlr_output, &original_output_box);
 
+  original_output_box.width *= output->wlr_output->scale;
+  original_output_box.height *= output->wlr_output->scale;
+
   uint32_t original_output_midpoint_x =
     original_output_box.x + original_output_box.width / 2;
   uint32_t original_output_midpoint_y =
@@ -294,6 +297,8 @@ output_get_relative(struct mwc_output *output, enum mwc_direction direction) {
   wl_list_for_each(o, &server.outputs, link) {
     struct wlr_box output_box;
     wlr_output_layout_get_box(server.output_layout, o->wlr_output, &output_box);
+    output_box.width *= o->wlr_output->scale;
+    output_box.height *= o->wlr_output->scale;
 
     if(direction == MWC_LEFT &&
       original_output_box.x == output_box.x + output_box.width
