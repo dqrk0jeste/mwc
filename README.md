@@ -12,7 +12,7 @@
 - great multitasking with multimonitor and workspaces support
 - smooth and customizable animations
 - easy configuration with hot reloading on save
-- eye-candy (opacity, blur, rounded cornders and shadows)
+- eye-candy (opacity, blur, rounded corners and shadows)
 - portals and an ipc for integrating with other apps
 
 ## dependencies
