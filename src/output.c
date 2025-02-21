@@ -152,7 +152,7 @@ output_transfer_existing_workspaces(struct mwc_output *output) {
   struct mwc_workspace *w, *tmp;
   wl_list_for_each(o, &server.outputs, link) {
     wl_list_for_each_safe(w, tmp, &o->workspaces, link) {
-      if(strcmp(w->config->output, output->wlr_output->name) == 0) {
+      if(w->config != NULL && strcmp(w->config->output, output->wlr_output->name) == 0) {
         /* fix that outputs state */
         if(w == o->active_workspace) {
           struct mwc_workspace *owned_workspace = output_find_owned_workspace(o);
