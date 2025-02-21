@@ -1223,8 +1223,10 @@ config_reload() {
         struct wlr_box output_box;
         wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
 
-        if(o->width != output_box.width || o->height != output_box.height
-           || abs((int32_t)o->refresh_rate - out->wlr_output->refresh) > 1000) {
+        if(o->width != output_box.width
+           || o->height != output_box.height
+           || abs((int32_t)o->refresh_rate - out->wlr_output->refresh) > 1000
+           || o->scale != out->wlr_output->scale) {
           output_initialize(out->wlr_output, o);
         }
 
