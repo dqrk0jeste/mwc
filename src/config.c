@@ -1224,7 +1224,7 @@ config_reload() {
         wlr_output_layout_get_box(server.output_layout, out->wlr_output, &output_box);
 
         if(o->width != output_box.width || o->height != output_box.height
-           || o->refresh_rate - out->wlr_output->refresh > 1000) {
+           || abs((int32_t)o->refresh_rate - out->wlr_output->refresh) > 1000) {
           output_initialize(out->wlr_output, o);
         }
 
@@ -1343,7 +1343,9 @@ config_reload() {
   snprintf(cursor_size, sizeof(cursor_size), "%u", server.config->cursor_size);
 
   cursor_size[7] = 0;
-  setenv("XCURSOR_THEME", server.config->cursor_theme, true);
+  if(server.config->cursor_theme != NULL) {
+    setenv("XCURSOR_THEME", server.config->cursor_theme, true);
+  }
   setenv("XCURSOR_SIZE", cursor_size, true);
 
   config_destroy(old_config);
