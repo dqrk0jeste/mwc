@@ -110,8 +110,15 @@ keyboard_configure(struct mwc_keyboard *keyboard) {
 
   struct xkb_keymap *keymap = xkb_keymap_new_from_names(context, &rule_names,
                                                         XKB_KEYMAP_COMPILE_NO_FLAGS);
-  /* TODO: use defaults here if something is wrong */
-  if(keymap == NULL) return false;
+  if(keymap == NULL) {
+    wlr_log(WLR_ERROR, "could not apply the desired configuration to the keyboard");
+    keymap = xkb_keymap_new_from_names(context, NULL,
+                                       XKB_KEYMAP_COMPILE_NO_FLAGS);
+    if(keymap == NULL) {
+      wlr_log(WLR_ERROR, "could not apply the default configuration to the keyboard");
+      return false;
+    }
+  }
 
   wlr_keyboard_set_keymap(keyboard->wlr_keyboard, keymap);
   xkb_keymap_unref(keymap);
