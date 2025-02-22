@@ -86,9 +86,7 @@ scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   wlr_scene_buffer_set_corner_radius(buffer, border_radius,
                                      server.config->border_radius_location);
 
-  if(width != 0) {
-    wlr_scene_buffer_set_dest_size(buffer, width, height);
-  }
+  wlr_scene_buffer_set_dest_size(buffer, width, height);
 }
 
 void
@@ -135,9 +133,8 @@ toplevel_apply_effects(struct mwc_toplevel *toplevel) {
     ? 0
     : max(server.config->border_radius - server.config->border_width, 0);
 
-  uint32_t width = toplevel->animation.running ? toplevel->animation.current.width : 0;
-  uint32_t height = toplevel->animation.running ? toplevel->animation.current.height : 0;
-
+  uint32_t width, height;
+  toplevel_get_actual_size(toplevel, &width, &height);
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
   
   scene_tree_apply_effects(toplevel->scene_tree, width, height, geometry.width, geometry.height,

@@ -199,7 +199,7 @@ keybind_close_keyboard_focused_toplevel(void *data) {
   struct mwc_toplevel *toplevel = server.focused_toplevel;
   if(toplevel == NULL) return;
 
-  xdg_toplevel_send_close(toplevel->xdg_toplevel->resource);
+  wlr_xdg_toplevel_send_close(toplevel->xdg_toplevel);
 }
 
 void
