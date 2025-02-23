@@ -18,6 +18,7 @@
 #include <wayland-util.h>
 #include <wlr/util/log.h>
 #include <wlr/util/box.h>
+#include <wlr/types/wlr_subcompositor.h>
 
 extern struct mwc_server server;
 
@@ -33,9 +34,6 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
       ? server.config->active_border_color
       : server.config->inactive_border_color;
 
-  uint32_t width, height;
-  toplevel_get_actual_size(toplevel, &width, &height);
-
   if(toplevel->border == NULL) {
     toplevel->border = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, border_color);
     wlr_scene_node_lower_to_bottom(&toplevel->border->node);
@@ -43,8 +41,10 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
     wlr_scene_rect_set_corner_radius(toplevel->border, border_radius, border_radius_location);
   }
 
-  wlr_scene_rect_set_size(toplevel->border, width + 2 * border_width,
-                          height + 2 * border_width);
+  uint32_t width, height;
+  toplevel_get_actual_size(toplevel, &width, &height);
+
+  wlr_scene_rect_set_size(toplevel->border, width + 2 * border_width, height + 2 * border_width);
 
   struct clipped_region clipped_region = {
     .area = { border_width, border_width, width, height },
@@ -56,63 +56,18 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
   wlr_scene_rect_set_color(toplevel->border, border_color);
 }
 
-void
-scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
-                           double opacity, uint32_t border_radius, bool is_popup) {
-  wlr_scene_buffer_set_opacity(buffer, opacity);
-
-  /* we dont blur or round popups */
-  if(is_popup) return;
-
-  if(server.config->blur) {
-    wlr_scene_buffer_set_backdrop_blur(buffer, true);
-    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
-    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, true);
-  } else {
-    wlr_scene_buffer_set_backdrop_blur(buffer, false);
-  }
-
-  wlr_scene_buffer_set_corner_radius(buffer, border_radius,
-                                     server.config->border_radius_location);
-}
-
-void
-scene_tree_apply_effects(struct wlr_scene_tree *tree,
-                         double opacity, uint32_t border_radius, bool is_popup) {
-  struct wlr_scene_node *node;
-  wl_list_for_each(node, &tree->children, link) {
-    switch(node->type) {
-      case WLR_SCENE_NODE_BUFFER: {
-        struct wlr_scene_buffer *buffer = wlr_scene_buffer_from_node(node);
-        scene_buffer_apply_effects(buffer, opacity, border_radius, is_popup);
-        break;
-      }
-      case WLR_SCENE_NODE_TREE: {
-        struct wlr_scene_tree *t = wlr_scene_tree_from_node(node);
-        struct mwc_something *something = t->node.data;
-        if(something != NULL) {
-          is_popup = something->type == MWC_POPUP;
-        }
-        scene_tree_apply_effects(t, opacity, border_radius, is_popup);
-        break;
-      }
-      default: break;
-    }
-  }
-}
-
 struct iter_scene_buffer_apply_blur_args {
-  int32_t start_x;
-  int32_t start_y;
   uint32_t width;
   uint32_t height;
+  double width_scale;
+  double height_scale;
   double opacity;
   uint32_t border_radius;
 };
 
 void
 iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
-                             int sx, int sy, void *data) {
+                             int lx, int ly, void *data) {
   struct iter_scene_buffer_apply_blur_args *args = data;
 
   wlr_scene_buffer_set_opacity(buffer, args->opacity);
@@ -125,23 +80,26 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   uint32_t surface_width = surface->current.width;
   uint32_t surface_height = surface->current.height;
 
-  wlr_log(WLR_ERROR, "macka: %d, %d", sx, sy);
-  TODO
-  if(sx == 0
-     && sy == 0) {
-    wlr_scene_buffer_set_corner_radius(buffer, args->border_radius, CORNER_LOCATION_TOP_LEFT);
-  }
-  if(sx + surface_width >= args->start_x + args->width
-     && sy == args->start_y) {
-    wlr_scene_buffer_set_corner_radius(buffer, args->border_radius, CORNER_LOCATION_TOP_RIGHT);
-  }
-  if(sx == args->start_x
-     && sy + surface_height >= args->start_y + args->height) {
-    wlr_scene_buffer_set_corner_radius(buffer, args->border_radius, CORNER_LOCATION_BOTTOM_LEFT);
-  }
-  if(sx + surface_width >= args->start_x + args->width
-     && sy + surface_height >= args->start_y + args->height) {
-    wlr_scene_buffer_set_corner_radius(buffer, args->border_radius, CORNER_LOCATION_BOTTOM_RIGHT);
+  surface_width *= args->width_scale;
+  surface_height *= args->height_scale;
+
+  wlr_scene_buffer_set_dest_size(buffer, surface_width, surface_height);
+
+  /* we dont round or blur popups */
+  if(wlr_xdg_popup_try_from_wlr_surface(surface) != NULL) return;
+
+  wlr_scene_buffer_set_corner_radius(buffer, args->border_radius,
+                                     server.config->border_radius_location);
+
+  /* we dont blur subsurfaces */
+  if(wlr_subsurface_try_from_wlr_surface(surface) != NULL) return;
+
+  if(server.config->blur) {
+    wlr_scene_buffer_set_backdrop_blur(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_optimized(buffer, true);
+    wlr_scene_buffer_set_backdrop_blur_ignore_transparent(buffer, false);
+  } else {
+    wlr_scene_buffer_set_backdrop_blur(buffer, false);
   }
 }
 
@@ -162,53 +120,21 @@ toplevel_apply_effects(struct mwc_toplevel *toplevel) {
 
   struct wlr_box geometry = toplevel_get_geometry(toplevel);
 
+  uint32_t width, height;
+  toplevel_get_actual_size(toplevel, &width, &height);
+
+
   struct iter_scene_buffer_apply_blur_args args = {
-    .start_x = geometry.x,
-    .start_y = geometry.y,
+    .width = width,
+    .height = height,
+    .width_scale = (double)width / geometry.width,
+    .height_scale = (double)height / geometry.height,
     .opacity = opacity,
     .border_radius = border_radius,
   };
 
   wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
                                  iter_scene_buffer_apply_effects, &args);
-}
-
-void
-scene_buffer_fit_size(struct wlr_scene_buffer *buffer, uint32_t width, uint32_t height, 
-                      double width_scale, double height_scale) {
-  struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(buffer);
-  if(scene_surface == NULL) return;
-
-  struct wlr_surface *surface = scene_surface->surface;
-
-  uint32_t surface_width = surface->current.width;
-  uint32_t surface_height = surface->current.height;
-
-  surface_width *= width_scale;
-  surface_height *= height_scale;
-
-  wlr_scene_buffer_set_dest_size(buffer, surface_width, surface_height);
-}
-
-void
-scene_tree_fit_size(struct wlr_scene_tree *tree, uint32_t width, uint32_t height,
-                    double width_scale, double height_scale) {
-  struct wlr_scene_node *node;
-  wl_list_for_each(node, &tree->children, link) {
-    switch(node->type) {
-      case WLR_SCENE_NODE_BUFFER: {
-        struct wlr_scene_buffer *buffer = wlr_scene_buffer_from_node(node);
-        scene_buffer_fit_size(buffer, width, height, width_scale, height_scale);
-        break;
-      }
-      case WLR_SCENE_NODE_TREE: {
-        struct wlr_scene_tree *t = wlr_scene_tree_from_node(node);
-        scene_tree_fit_size(t, width, height, width_scale, height_scale);
-        break;
-      }
-      default: break;
-    }
-  }
 }
 
 void
@@ -337,6 +263,7 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
   }
 
   wlr_scene_node_set_enabled(&toplevel->shadow->node, true);
+
   wlr_scene_shadow_set_size(toplevel->shadow, shadow_box.width, shadow_box.height);
   wlr_scene_shadow_set_clipped_region(toplevel->shadow, clipped_region);
 }
@@ -353,22 +280,12 @@ toplevel_draw_frame(struct mwc_toplevel *toplevel) {
                                 toplevel->current.x, toplevel->current.y);
   }
 
-
   toplevel_draw_borders(toplevel);
   if(server.config->shadows) {
     toplevel_draw_shadow(toplevel);
   }
   toplevel_apply_clip(toplevel);
   toplevel_apply_effects(toplevel);
-
-  uint32_t width, height;
-  toplevel_get_actual_size(toplevel, &width, &height);
-
-  struct wlr_box geometry = toplevel_get_geometry(toplevel);
-  double width_scale = (double)width / geometry.width;
-  double height_scale = (double)height / geometry.height;
-
-  scene_tree_fit_size(toplevel->scene_tree, width, height, width_scale, height_scale);
 
   return need_more_frames;
 }
