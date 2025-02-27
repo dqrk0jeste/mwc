@@ -57,6 +57,9 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
 }
 
 struct iter_scene_buffer_apply_blur_args {
+  int32_t root_x;
+  int32_t root_y;
+  struct wlr_box geometry;
   uint32_t width;
   uint32_t height;
   double width_scale;
@@ -67,7 +70,7 @@ struct iter_scene_buffer_apply_blur_args {
 
 void
 iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
-                             int lx, int ly, void *data) {
+                                int lx, int ly, void *data) {
   struct iter_scene_buffer_apply_blur_args *args = data;
 
   wlr_scene_buffer_set_opacity(buffer, args->opacity);
@@ -88,8 +91,36 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   /* we dont round or blur popups */
   if(wlr_xdg_popup_try_from_wlr_surface(surface) != NULL) return;
 
-  wlr_scene_buffer_set_corner_radius(buffer, args->border_radius,
-                                     server.config->border_radius_location);
+  int32_t x = lx - args->root_x;
+  int32_t y = ly - args->root_y;
+
+  enum corner_location corners = 0;
+
+  if(server.config->border_radius_location & CORNER_LOCATION_TOP_LEFT
+     && x == 0
+     && y == 0) {
+    corners |= CORNER_LOCATION_TOP_LEFT;
+  }
+
+  if(server.config->border_radius_location & CORNER_LOCATION_BOTTOM_LEFT
+     && x == 0
+     && y + surface->current.height == args->geometry.height) {
+    corners |= CORNER_LOCATION_BOTTOM_LEFT;
+  }
+
+  if(server.config->border_radius_location & CORNER_LOCATION_TOP_RIGHT
+     && x + surface->current.width == args->geometry.width
+     && y == 0) {
+    corners |= CORNER_LOCATION_TOP_RIGHT;
+  }
+
+  if(server.config->border_radius_location & CORNER_LOCATION_BOTTOM_RIGHT
+     && x + surface->current.width == args->geometry.width
+     && y + surface->current.height == args->geometry.height) {
+    corners |= CORNER_LOCATION_BOTTOM_RIGHT;
+  }
+
+  wlr_scene_buffer_set_corner_radius(buffer, args->border_radius, corners);
 
   /* we dont blur subsurfaces */
   if(wlr_subsurface_try_from_wlr_surface(surface) != NULL) return;
@@ -123,8 +154,10 @@ toplevel_apply_effects(struct mwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
-
   struct iter_scene_buffer_apply_blur_args args = {
+    .root_x = toplevel->scene_tree->node.x,
+    .root_y = toplevel->scene_tree->node.y,
+    .geometry = toplevel_get_geometry(toplevel),
     .width = width,
     .height = height,
     .width_scale = (double)width / geometry.width,
