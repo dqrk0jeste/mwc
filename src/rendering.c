@@ -318,7 +318,9 @@ toplevel_draw_frame(struct mwc_toplevel *toplevel) {
                                 toplevel->current.x, toplevel->current.y);
   }
 
-  toplevel_draw_borders(toplevel);
+  if(server.config->border_width > 0) {
+    toplevel_draw_borders(toplevel);
+  }
   if(server.config->shadows) {
     toplevel_draw_shadow(toplevel);
   }
