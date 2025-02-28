@@ -24,15 +24,18 @@ extern struct mwc_server server;
 
 void
 toplevel_draw_borders(struct mwc_toplevel *toplevel) {
+  if(toplevel->border != NULL && toplevel->fullscreen) {
+    wlr_scene_node_set_enabled(&toplevel->border->node, false);
+    return;
+  }
+
   uint32_t border_width = server.config->border_width;
   uint32_t border_radius = server.config->border_radius;
   enum corner_location border_radius_location = server.config->border_radius_location;
 
-  float *border_color = toplevel->fullscreen
-    ? (float[4]){ 0, 0, 0, 0 }
-    : toplevel == server.focused_toplevel
-      ? server.config->active_border_color
-      : server.config->inactive_border_color;
+  float *border_color = toplevel == server.focused_toplevel
+    ? server.config->active_border_color
+    : server.config->inactive_border_color;
 
   if(toplevel->border == NULL) {
     toplevel->border = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, border_color);
@@ -41,6 +44,8 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
     wlr_scene_rect_set_corner_radius(toplevel->border, border_radius, border_radius_location);
   }
 
+  wlr_scene_node_set_enabled(&toplevel->border->node, true);
+
   uint32_t width, height;
   toplevel_get_actual_size(toplevel, &width, &height);
 
@@ -48,7 +53,7 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
 
   struct clipped_region clipped_region = {
     .area = { border_width, border_width, width, height },
-    .corner_radius = max(border_radius - border_width, 0),
+    .corner_radius = max((int32_t)border_radius - border_width, 0),
     .corners = border_radius_location,
   };
   wlr_scene_rect_set_clipped_region(toplevel->border, clipped_region);
