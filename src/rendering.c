@@ -53,7 +53,7 @@ toplevel_draw_borders(struct mwc_toplevel *toplevel) {
 
   struct clipped_region clipped_region = {
     .area = { border_width, border_width, width, height },
-    .corner_radius = max((int32_t)border_radius - border_width, 0),
+    .corner_radius = max((int32_t)border_radius - (int32_t)border_width, 0),
     .corners = border_radius_location,
   };
   wlr_scene_rect_set_clipped_region(toplevel->border, clipped_region);
@@ -275,7 +275,7 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
     .x = server.config->shadows_position.x,
     .y = server.config->shadows_position.y,
     .width = width + 2 * delta,
-    .height = height + 2 *delta,
+    .height = height + 2 * delta,
   };
 
   struct wlr_box intersection_box;

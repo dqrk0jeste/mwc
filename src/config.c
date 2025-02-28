@@ -1225,7 +1225,7 @@ config_reload() {
 
         if(o->width != output_box.width
            || o->height != output_box.height
-           || abs((int32_t)o->refresh_rate - out->wlr_output->refresh) > 1000
+           || abs((int32_t)o->refresh_rate - (int32_t)out->wlr_output->refresh) > 1000
            || o->scale != out->wlr_output->scale) {
           output_initialize(out->wlr_output, o);
         }

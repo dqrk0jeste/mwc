@@ -124,7 +124,6 @@ struct mwc_server {
   struct mwc_lock *lock;
 
   struct mwc_config *config;
-  char *config_path;
 
   int *ipc_clients;
   bool ipc_running;
