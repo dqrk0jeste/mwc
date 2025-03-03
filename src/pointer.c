@@ -17,7 +17,9 @@
 #include <wayland-util.h>
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
+#include <wlr/types/wlr_compositor.h>
 #include <wlr/util/log.h>
+#include <wlr/util/region.h>
 
 extern struct mwc_server server;
 
@@ -141,8 +143,8 @@ server_reset_cursor_mode() {
 void
 cursor_handle_motion(uint32_t time) {
   /* get the output that the cursor is on currently */
-  struct wlr_output *wlr_output = wlr_output_layout_output_at(
-    server.output_layout, server.cursor->x, server.cursor->y);
+  struct wlr_output *wlr_output = wlr_output_layout_output_at(server.output_layout,
+                                                              server.cursor->x, server.cursor->y);
   struct mwc_output *output = wlr_output->data;
 
   /* set global active workspace and stop moving resizing if there is a fullscreened toplevel */
@@ -212,14 +214,15 @@ cursor_handle_motion(uint32_t time) {
 void
 server_handle_cursor_motion(struct wl_listener *listener, void *data) {
   struct wlr_pointer_motion_event *event = data;
-  wlr_cursor_move(server.cursor, &event->pointer->base,
-                  event->delta_x, event->delta_y);
+
+  constrain_apply_to_move(&event->delta_x, &event->delta_y);
+
+  wlr_cursor_move(server.cursor, &event->pointer->base, event->delta_x, event->delta_y);
   cursor_handle_motion(event->time_msec);
 }
 
 void
-server_handle_cursor_motion_absolute(
-  struct wl_listener *listener, void *data) {
+server_handle_cursor_motion_absolute(struct wl_listener *listener, void *data) {
   struct wlr_pointer_motion_absolute_event *event = data;
   wlr_cursor_warp_absolute(server.cursor, &event->pointer->base, event->x, event->y);
   cursor_handle_motion(event->time_msec);
@@ -296,3 +299,85 @@ server_handle_cursor_frame(struct wl_listener *listener, void *data) {
   wlr_seat_pointer_notify_frame(server.seat);
 }
 
+/* a lot of the code was stolen of labwc's implemenetation, bit props to them */
+void
+server_handle_new_constraint(struct wl_listener *listener, void *data) {
+	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
+
+  /* we only take the contraints from the toplevels; it simplyfies the logic and it
+   * does not make that much sence for popups or layers to contraint the pointer */
+  struct wlr_xdg_toplevel *wlr_xdg_toplevel =
+    wlr_xdg_toplevel_try_from_wlr_surface(wlr_constraint->surface);
+  if(wlr_xdg_toplevel == NULL) return;
+
+  struct mwc_toplevel *toplevel = wlr_xdg_toplevel->base->data;
+
+  struct mwc_pointer_constraint *constraint = calloc(1, sizeof(*constraint));
+  constraint->toplevel = toplevel;
+  constraint->wlr_pointer_constraint = wlr_constraint;
+  constraint->wlr_pointer_constraint->data = constraint;
+  
+  constraint->destroy.notify = constraint_handle_destroy;
+
+  wl_signal_add(&wlr_constraint->events.destroy, &constraint->destroy);
+
+	if(toplevel == server.focused_toplevel) {
+    constraint_init(constraint);
+  }
+}
+
+void
+constraint_init(struct mwc_pointer_constraint *constraint) {
+  if(server.current_constraint != NULL) {
+    wlr_pointer_constraint_v1_send_deactivated(server.current_constraint->wlr_pointer_constraint);
+  }
+
+  server.current_constraint = constraint;
+  constraint_move_to_hint(constraint);
+  wlr_pointer_constraint_v1_send_activated(constraint->wlr_pointer_constraint);
+}
+
+void
+constraint_move_to_hint(struct mwc_pointer_constraint *constraint) {
+  struct wlr_pointer_constraint_v1 *wlr_constraint = constraint->wlr_pointer_constraint;
+  if(wlr_constraint->current.committed & WLR_POINTER_CONSTRAINT_V1_STATE_CURSOR_HINT) {
+    double sx = wlr_constraint->current.cursor_hint.x;
+    double sy = wlr_constraint->current.cursor_hint.y;
+    wlr_cursor_warp(server.cursor, NULL,
+                    X(server.focused_toplevel) + sx,
+                    Y(server.focused_toplevel) + sy);
+
+    /* make sure we are not sending unnecessary surface movements (took from labwc)*/
+    wlr_seat_pointer_warp(server.seat, sx, sy);
+  }
+}
+
+void
+constraint_handle_destroy(struct wl_listener *listener, void *data) {
+	struct mwc_pointer_constraint *constraint = wl_container_of(listener, constraint, destroy);
+
+	wl_list_remove(&constraint->destroy.link);
+	if(server.current_constraint == constraint) {
+    constraint_move_to_hint(constraint);
+    server.current_constraint = NULL;
+	}
+
+	free(constraint);
+}
+
+void
+constrain_apply_to_move(double *dx, double *dy) {
+  if(server.current_constraint == NULL) return;
+
+	double current_x = server.cursor->x - X(server.focused_toplevel);
+	double current_y = server.cursor->y - Y(server.focused_toplevel);
+
+  double constrained_x, constrained_y;
+  wlr_region_confine(&server.current_constraint->wlr_pointer_constraint->region,
+                     current_x, current_y,
+                     current_x + *dx, current_y + *dy,
+                     &constrained_x, &constrained_y);
+
+  *dx = constrained_x - current_x;
+  *dx = constrained_y - current_y;
+}

@@ -11,6 +11,7 @@
 #include <wlr/types/wlr_server_decoration.h>
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
+#include <wlr/types/wlr_pointer_constraints_v1.h>
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -122,6 +123,10 @@ struct mwc_server {
   struct wl_listener new_lock;
   struct wl_listener lock_manager_destroy;
   struct mwc_lock *lock;
+
+  struct wlr_pointer_constraints_v1 *pointer_contrains_manager;
+  struct wl_listener new_contraint;
+  struct mwc_pointer_constraint *current_constraint;
 
   struct mwc_config *config;
 

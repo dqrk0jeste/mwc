@@ -16,8 +16,9 @@ protocol_dir = wayland_protocols.get_variable('pkgdatadir')
 protocol_files = [
   protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
   protocol_dir / 'unstable/xdg-output/xdg-output-unstable-v1.xml',
+  protocol_dir / 'unstable/pointer-constraints/pointer-constraints-unstable-v1.xml',
+  protocol_dir / 'staging/cursor-shape/cursor-shape-v1.xml',
   'protocols/wlr-layer-shell-unstable-v1.xml',
-  'protocols/cursor-shape-v1.xml',
 ]
 
 generated = []

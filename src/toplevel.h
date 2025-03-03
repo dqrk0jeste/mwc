@@ -56,8 +56,8 @@ struct mwc_toplevel {
   struct wl_listener set_title;
 };
 
-#define X(t) (t)->scene_tree->node.x
-#define Y(t) (t)->scene_tree->node.y
+#define X(t) ((t)->scene_tree->node.x)
+#define Y(t) ((t)->scene_tree->node.y)
 
 void
 toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);

@@ -12,6 +12,7 @@
 #include "output.h"
 #include "helpers.h"
 #include "layer_surface.h"
+#include "pointer.h"
 
 #include <assert.h>
 #include <limits.h>
@@ -233,6 +234,11 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
   /* if its the one focus should be returned to, remove it */
   if(toplevel == server.prev_focused) {
     server.prev_focused = NULL;
+  }
+
+  if(server.current_constraint != NULL
+     && server.current_constraint->toplevel == toplevel) {
+    server.current_constraint = NULL;
   }
 
   if(toplevel == server.grabbed_toplevel) {
@@ -889,6 +895,13 @@ focus_toplevel(struct mwc_toplevel *toplevel) {
     wlr_seat_keyboard_notify_enter(seat, toplevel->xdg_toplevel->base->surface,
                                    keyboard->keycodes, keyboard->num_keycodes,
                                    &keyboard->modifiers);
+  }
+
+  struct wlr_pointer_constraint_v1 *wlr_constraint =
+    wlr_pointer_constraints_v1_constraint_for_surface(server.pointer_contrains_manager,
+                                                      toplevel->xdg_toplevel->base->surface, server.seat);
+  if(wlr_constraint != NULL) {
+    constraint_init(wlr_constraint->data);
   }
 
   ipc_broadcast_message(IPC_ACTIVE_TOPLEVEL);

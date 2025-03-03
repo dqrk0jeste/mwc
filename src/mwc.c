@@ -383,6 +383,10 @@ main(int argc, char *argv[]) {
   wl_signal_add(&server.cursor_shape_manager->events.request_set_shape, &server.request_cursor_shape);
   wl_signal_add(&server.cursor_shape_manager->events.destroy, &server.cursor_shape_manager_destroy);
 
+  server.pointer_contrains_manager = wlr_pointer_constraints_v1_create(server.wl_display);
+  server.new_contraint.notify = server_handle_new_constraint;
+  wl_signal_add(&server.pointer_contrains_manager->events.new_constraint, &server.new_contraint);
+
   /* Add a Unix socket to the Wayland display. */
   const char *socket = wl_display_add_socket_auto(server.wl_display);
   if(!socket) {
