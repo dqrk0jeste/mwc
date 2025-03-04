@@ -2,6 +2,7 @@
 
 #include <scenefx/types/wlr_scene.h>
 
+#include "helpers.h"
 #include "keyboard.h"
 #include "pointer.h"
 #include "session_lock.h"
@@ -12,6 +13,7 @@
 #include <wlr/types/wlr_gamma_control_v1.h>
 #include <wlr/types/wlr_cursor_shape_v1.h>
 #include <wlr/types/wlr_pointer_constraints_v1.h>
+#include <wlr/types/wlr_relative_pointer_v1.h>
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -127,6 +129,13 @@ struct mwc_server {
   struct wlr_pointer_constraints_v1 *pointer_contrains_manager;
   struct wl_listener new_contraint;
   struct mwc_pointer_constraint *current_constraint;
+  struct vec2 pointer_focused_surface_position_relative;
+
+  struct wlr_surface *pointer_focused_surface;
+  struct mwc_something *pointer_focused_surface_root_parent;
+
+  struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
+  struct wl_listener relative_pointer_manager_destroy;
 
   struct mwc_config *config;
 

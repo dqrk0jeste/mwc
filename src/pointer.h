@@ -16,7 +16,6 @@ struct mwc_pointer {
 
 struct mwc_pointer_constraint {
   struct wlr_pointer_constraint_v1 *wlr_pointer_constraint;
-  struct mwc_toplevel *toplevel;
 
   struct wl_listener destroy;
 };
@@ -71,3 +70,9 @@ constraint_init(struct mwc_pointer_constraint *constraint);
 
 void
 constraint_move_to_hint(struct mwc_pointer_constraint *constraint);
+
+void
+server_handle_new_relative_pointer(struct wl_listener *listener, void *data);
+
+void
+server_handle_relative_pointer_manager_destroy(struct wl_listener *listener, void *data);

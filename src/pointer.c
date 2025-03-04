@@ -188,8 +188,13 @@ cursor_handle_motion(uint32_t time) {
   double sx, sy;
   struct wlr_seat *seat = server.seat;
   struct wlr_surface *surface = NULL;
-  struct mwc_something *something =
-    something_at(server.cursor->x, server.cursor->y, &surface, &sx, &sy);
+  struct mwc_something *something = something_at(server.cursor->x,
+                                                 server.cursor->y,
+                                                 &surface, &sx, &sy);
+
+  server.pointer_focused_surface = surface;
+  server.pointer_focused_surface_position_relative = (struct vec2){sx, sy};
+  server.pointer_focused_surface_root_parent = something;
 
   if(something == NULL) {
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "default");
@@ -207,6 +212,13 @@ cursor_handle_motion(uint32_t time) {
     focus_lock_surface(something->lock_surface);
   }
 
+  struct wlr_pointer_constraint_v1 *wlr_constraint =
+    wlr_pointer_constraints_v1_constraint_for_surface(server.pointer_contrains_manager,
+                                                      surface, server.seat);
+  if(wlr_constraint != NULL && wlr_constraint->data != NULL) {
+    constraint_init(wlr_constraint->data);
+  }
+
   wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
   wlr_seat_pointer_notify_motion(seat, time, sx, sy);
 }
@@ -217,6 +229,12 @@ server_handle_cursor_motion(struct wl_listener *listener, void *data) {
 
   constrain_apply_to_move(&event->delta_x, &event->delta_y);
 
+  wlr_relative_pointer_manager_v1_send_relative_motion(server.relative_pointer_manager,
+                                                       server.seat,
+                                                       (uint64_t)event->time_msec * 1000,
+                                                       event->delta_x, event->delta_y,
+                                                       event->unaccel_dx, event->unaccel_dy);
+
   wlr_cursor_move(server.cursor, &event->pointer->base, event->delta_x, event->delta_y);
   cursor_handle_motion(event->time_msec);
 }
@@ -224,6 +242,19 @@ server_handle_cursor_motion(struct wl_listener *listener, void *data) {
 void
 server_handle_cursor_motion_absolute(struct wl_listener *listener, void *data) {
   struct wlr_pointer_motion_absolute_event *event = data;
+
+  double lx, ly;
+	wlr_cursor_absolute_to_layout_coords(server.cursor, &event->pointer->base,
+                                       event->x, event->y, &lx, &ly);
+
+	double dx = lx - server.cursor->x;
+	double dy = ly - server.cursor->y;
+
+  wlr_relative_pointer_manager_v1_send_relative_motion(server.relative_pointer_manager,
+                                                       server.seat,
+                                                       (uint64_t)event->time_msec * 1000,
+                                                       dx, dy, dx, dy);
+
   wlr_cursor_warp_absolute(server.cursor, &event->pointer->base, event->x, event->y);
   cursor_handle_motion(event->time_msec);
 }
@@ -299,35 +330,30 @@ server_handle_cursor_frame(struct wl_listener *listener, void *data) {
   wlr_seat_pointer_notify_frame(server.seat);
 }
 
-/* a lot of the code was stolen of labwc's implemenetation, bit props to them */
+/* a lot of the code was stolen of labwc's implemenetation, big props to them */
 void
 server_handle_new_constraint(struct wl_listener *listener, void *data) {
 	struct wlr_pointer_constraint_v1 *wlr_constraint = data;
 
-  /* we only take the contraints from the toplevels; it simplyfies the logic and it
-   * does not make that much sence for popups or layers to contraint the pointer */
-  struct wlr_xdg_toplevel *wlr_xdg_toplevel =
-    wlr_xdg_toplevel_try_from_wlr_surface(wlr_constraint->surface);
-  if(wlr_xdg_toplevel == NULL) return;
-
-  struct mwc_toplevel *toplevel = wlr_xdg_toplevel->base->data;
+  /* if there is already a constraint on this surface we ignore it */
+  struct wlr_pointer_constraint_v1 *con;
+  wl_list_for_each(con, &server.pointer_contrains_manager->constraints, link) {
+    if(con != wlr_constraint && con->surface == wlr_constraint->surface) return;
+  }
 
   struct mwc_pointer_constraint *constraint = calloc(1, sizeof(*constraint));
-  constraint->toplevel = toplevel;
   constraint->wlr_pointer_constraint = wlr_constraint;
   constraint->wlr_pointer_constraint->data = constraint;
   
   constraint->destroy.notify = constraint_handle_destroy;
-
   wl_signal_add(&wlr_constraint->events.destroy, &constraint->destroy);
-
-	if(toplevel == server.focused_toplevel) {
-    constraint_init(constraint);
-  }
 }
 
 void
 constraint_init(struct mwc_pointer_constraint *constraint) {
+  if(server.current_constraint == constraint) return;
+
+  wlr_log(WLR_ERROR, "inited pointer contraint %p", constraint);
   if(server.current_constraint != NULL) {
     wlr_pointer_constraint_v1_send_deactivated(server.current_constraint->wlr_pointer_constraint);
   }
@@ -340,6 +366,7 @@ constraint_init(struct mwc_pointer_constraint *constraint) {
 void
 constraint_move_to_hint(struct mwc_pointer_constraint *constraint) {
   struct wlr_pointer_constraint_v1 *wlr_constraint = constraint->wlr_pointer_constraint;
+
   if(wlr_constraint->current.committed & WLR_POINTER_CONSTRAINT_V1_STATE_CURSOR_HINT) {
     double sx = wlr_constraint->current.cursor_hint.x;
     double sy = wlr_constraint->current.cursor_hint.y;
@@ -369,15 +396,28 @@ void
 constrain_apply_to_move(double *dx, double *dy) {
   if(server.current_constraint == NULL) return;
 
-	double current_x = server.cursor->x - X(server.focused_toplevel);
-	double current_y = server.cursor->y - Y(server.focused_toplevel);
+  if(server.current_constraint->wlr_pointer_constraint->type == WLR_POINTER_CONSTRAINT_V1_LOCKED) {
+    *dx = 0;
+    *dy = 0;
+    return;
+  }
+
+  if(server.pointer_focused_surface == NULL) return;
+
+	double current_x = server.pointer_focused_surface_position_relative.x;
+	double current_y = server.pointer_focused_surface_position_relative.y;
 
   double constrained_x, constrained_y;
-  wlr_region_confine(&server.current_constraint->wlr_pointer_constraint->region,
+  if(wlr_region_confine(&server.current_constraint->wlr_pointer_constraint->region,
                      current_x, current_y,
                      current_x + *dx, current_y + *dy,
-                     &constrained_x, &constrained_y);
+                     &constrained_x, &constrained_y)) {
+    *dx = constrained_x - current_x;
+    *dy = constrained_y - current_y;
+  }
+}
 
-  *dx = constrained_x - current_x;
-  *dx = constrained_y - current_y;
+void
+server_handle_relative_pointer_manager_destroy(struct wl_listener *listener, void *data) {
+  wl_list_remove(&server.relative_pointer_manager_destroy.link);
 }

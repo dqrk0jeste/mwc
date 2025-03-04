@@ -9,6 +9,7 @@
 #include "keyboard.h"
 #include "config.h"
 #include "output.h"
+#include "pointer.h"
 #include "toplevel.h"
 #include "popup.h"
 #include "layer_surface.h"
@@ -382,6 +383,10 @@ main(int argc, char *argv[]) {
   server.cursor_shape_manager_destroy.notify = server_handle_cursor_shape_destroy;
   wl_signal_add(&server.cursor_shape_manager->events.request_set_shape, &server.request_cursor_shape);
   wl_signal_add(&server.cursor_shape_manager->events.destroy, &server.cursor_shape_manager_destroy);
+
+  server.relative_pointer_manager = wlr_relative_pointer_manager_v1_create(server.wl_display);
+  server.relative_pointer_manager_destroy.notify = server_handle_relative_pointer_manager_destroy;
+  wl_signal_add(&server.relative_pointer_manager->events.destroy, &server.relative_pointer_manager_destroy);
 
   server.pointer_contrains_manager = wlr_pointer_constraints_v1_create(server.wl_display);
   server.new_contraint.notify = server_handle_new_constraint;
