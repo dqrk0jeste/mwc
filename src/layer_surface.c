@@ -145,15 +145,6 @@ layer_surface_handle_unmap(struct wl_listener *listener, void *data) {
 
   wl_list_remove(&layer_surface->link);
 
-  if(server.pointer_focused_surface != NULL
-     && server.pointer_focused_surface_root_parent->layer_surface == layer_surface) {
-    if(server.current_constraint != NULL) {
-      server.current_constraint = NULL;
-    }
-    server.pointer_focused_surface = NULL;
-    server.pointer_focused_surface_root_parent = NULL;
-  }
-
   struct mwc_output *output = layer_surface->wlr_layer_surface->output->data;
 
   if(output == NULL) {

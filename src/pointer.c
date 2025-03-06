@@ -13,6 +13,7 @@
 #include "workspace.h"
 
 #include <libinput.h>
+#include <stdint.h>
 #include <wayland-server-core.h>
 #include <wayland-util.h>
 #include <wlr/backend/libinput.h>
@@ -184,17 +185,17 @@ cursor_handle_motion(uint32_t time) {
     dnd_icons_move(server.cursor->x, server.cursor->y);
   }
 
+  pointer_handle_focus(time, true);
+}
+
+void
+pointer_handle_focus(uint32_t time, bool handle_keyboard_focus) {
   /* find something under the pointer and send the event along. */
   double sx, sy;
   struct wlr_seat *seat = server.seat;
   struct wlr_surface *surface = NULL;
-  struct mwc_something *something = something_at(server.cursor->x,
-                                                 server.cursor->y,
+  struct mwc_something *something = something_at(server.cursor->x, server.cursor->y,
                                                  &surface, &sx, &sy);
-
-  server.pointer_focused_surface = surface;
-  server.pointer_focused_surface_position_relative = (struct vec2){sx, sy};
-  server.pointer_focused_surface_root_parent = something;
 
   if(something == NULL) {
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "default");
@@ -204,19 +205,23 @@ cursor_handle_motion(uint32_t time) {
     return;
   }
 
-  if(something->type == MWC_TOPLEVEL) {
-    focus_toplevel(something->toplevel);
-  } else if(something->type == MWC_LAYER_SURFACE){
-    focus_layer_surface(something->layer_surface);
-  } else if(something->type == MWC_LOCK_SURFACE) {
-    focus_lock_surface(something->lock_surface);
+  if(handle_keyboard_focus) {
+    if(something->type == MWC_TOPLEVEL) {
+      focus_toplevel(something->toplevel);
+    } else if(something->type == MWC_LAYER_SURFACE){
+      focus_layer_surface(something->layer_surface);
+    } else if(something->type == MWC_LOCK_SURFACE) {
+      focus_lock_surface(something->lock_surface);
+    }
   }
 
   struct wlr_pointer_constraint_v1 *wlr_constraint =
     wlr_pointer_constraints_v1_constraint_for_surface(server.pointer_contrains_manager,
                                                       surface, server.seat);
-  if(wlr_constraint != NULL && wlr_constraint->data != NULL) {
-    constraint_init(wlr_constraint->data);
+  if(wlr_constraint == NULL || wlr_constraint->data == NULL) {
+    server.current_constraint = NULL;
+  } else {
+    constraint_set_as_current(wlr_constraint->data);
   }
 
   wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
@@ -350,10 +355,19 @@ server_handle_new_constraint(struct wl_listener *listener, void *data) {
 }
 
 void
-constraint_init(struct mwc_pointer_constraint *constraint) {
+constraint_remove_current(void) {
+  if(server.current_constraint == NULL) return;
+
+  constraint_move_to_hint(server.current_constraint);
+
+  server.current_constraint = NULL;
+  wlr_pointer_constraint_v1_send_deactivated(server.current_constraint->wlr_pointer_constraint);
+}
+
+void
+constraint_set_as_current(struct mwc_pointer_constraint *constraint) {
   if(server.current_constraint == constraint) return;
 
-  wlr_log(WLR_ERROR, "inited pointer contraint %p", constraint);
   if(server.current_constraint != NULL) {
     wlr_pointer_constraint_v1_send_deactivated(server.current_constraint->wlr_pointer_constraint);
   }
@@ -402,10 +416,10 @@ constrain_apply_to_move(double *dx, double *dy) {
     return;
   }
 
-  if(server.pointer_focused_surface == NULL) return;
+  if(server.seat->pointer_state.focused_surface == NULL) return;
 
-	double current_x = server.pointer_focused_surface_position_relative.x;
-	double current_y = server.pointer_focused_surface_position_relative.y;
+	double current_x = server.seat->pointer_state.sx;
+	double current_y = server.seat->pointer_state.sy;
 
   double constrained_x, constrained_y;
   if(wlr_region_confine(&server.current_constraint->wlr_pointer_constraint->region,

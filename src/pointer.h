@@ -42,6 +42,9 @@ void
 cursor_handle_motion(uint32_t time);
 
 void
+pointer_handle_focus(uint32_t time, bool handle_keyboard_focus);
+
+void
 server_handle_cursor_motion(struct wl_listener *listener, void *data);
 
 void
@@ -66,7 +69,10 @@ void
 constrain_apply_to_move(double *dx, double *dy);
 
 void
-constraint_init(struct mwc_pointer_constraint *constraint);
+constraint_remove_current(void);
+
+void
+constraint_set_as_current(struct mwc_pointer_constraint *constraint);
 
 void
 constraint_move_to_hint(struct mwc_pointer_constraint *constraint);

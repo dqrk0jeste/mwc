@@ -236,15 +236,6 @@ toplevel_handle_unmap(struct wl_listener *listener, void *data) {
     server.prev_focused = NULL;
   }
 
-  if(server.pointer_focused_surface != NULL
-     &&server.pointer_focused_surface_root_parent->toplevel == toplevel) {
-    if(server.current_constraint != NULL) {
-      server.current_constraint = NULL;
-    }
-    server.pointer_focused_surface = NULL;
-    server.pointer_focused_surface_root_parent = NULL;
-  }
-
   if(toplevel == server.grabbed_toplevel) {
     server_reset_cursor_mode();
     
@@ -642,6 +633,11 @@ cursor_jump_focused_toplevel(void) {
   wlr_cursor_warp(server.cursor, NULL,
                   toplevel->scene_tree->node.x + geo_box.x + toplevel->current.width / 2.0,
                   toplevel->scene_tree->node.y + geo_box.y + toplevel->current.height / 2.0);
+
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  pointer_handle_focus(now.tv_sec * 1000 + now.tv_nsec / 1000, false);
 }
 
 void

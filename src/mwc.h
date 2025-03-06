@@ -129,10 +129,6 @@ struct mwc_server {
   struct wlr_pointer_constraints_v1 *pointer_contrains_manager;
   struct wl_listener new_contraint;
   struct mwc_pointer_constraint *current_constraint;
-  struct vec2 pointer_focused_surface_position_relative;
-
-  struct wlr_surface *pointer_focused_surface;
-  struct mwc_something *pointer_focused_surface_root_parent;
 
   struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
   struct wl_listener relative_pointer_manager_destroy;

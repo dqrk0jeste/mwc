@@ -23,15 +23,6 @@ void
 lock_surface_handle_unmap(struct wl_listener *listener, void *data) {
 	struct mwc_lock_surface *lock_surface = wl_container_of(listener, lock_surface, unmap);
 
-  if(server.pointer_focused_surface != NULL
-     && server.pointer_focused_surface_root_parent->lock_surface == lock_surface) {
-    if(server.current_constraint != NULL) {
-      server.current_constraint = NULL;
-    }
-    server.pointer_focused_surface = NULL;
-    server.pointer_focused_surface_root_parent = NULL;
-  }
-
   wl_list_remove(&lock_surface->link);
   /* we pass focus only if the thing is still locked */
   if(lock_surface->lock->locked && !wl_list_empty(&lock_surface->lock->surfaces)) {

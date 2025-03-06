@@ -4,6 +4,7 @@
 #include "mwc.h"
 #include "config.h"
 #include "layout.h"
+#include "pointer.h"
 #include "rendering.h"
 #include "workspace.h"
 #include "toplevel.h"
@@ -334,6 +335,11 @@ cursor_jump_output(struct mwc_output *output) {
   wlr_cursor_warp(server.cursor, NULL,
                   output_box.x + output_box.width / 2.0,
                   output_box.y + output_box.height / 2.0);
+
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  pointer_handle_focus(now.tv_sec * 1000 + now.tv_nsec / 1000, false);
 }
 
 void
