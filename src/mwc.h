@@ -2,7 +2,6 @@
 
 #include <scenefx/types/wlr_scene.h>
 
-#include "helpers.h"
 #include "keyboard.h"
 #include "pointer.h"
 #include "session_lock.h"
@@ -132,6 +131,10 @@ struct mwc_server {
 
   struct wlr_relative_pointer_manager_v1 *relative_pointer_manager;
   struct wl_listener relative_pointer_manager_destroy;
+
+  struct wlr_xdg_activation_v1 *xdg_activation;
+  struct wl_listener xdg_activation_request;
+  struct wl_listener xdg_activation_new_token;
 
   struct mwc_config *config;
 

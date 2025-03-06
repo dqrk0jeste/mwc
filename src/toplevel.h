@@ -59,6 +59,12 @@ struct mwc_toplevel {
 #define X(t) ((t)->scene_tree->node.x)
 #define Y(t) ((t)->scene_tree->node.y)
 
+struct mwc_token {
+  struct wlr_xdg_activation_token_v1 *wlr_token;
+
+	struct wl_listener destroy;
+};
+
 void
 toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
 
@@ -171,3 +177,9 @@ get_pointer_focused_toplevel(void);
 
 void
 toplevel_recheck_opacity_rules(struct mwc_toplevel *toplevel);
+
+void
+xdg_activation_handle_new_token(struct wl_listener *listener, void *data);
+
+void
+xdg_activation_handle_request(struct wl_listener *listener, void *data);

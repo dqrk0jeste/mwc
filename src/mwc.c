@@ -49,6 +49,7 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
 #include <wlr/types/wlr_session_lock_v1.h>
+#include <wlr/types/wlr_xdg_activation_v1.h>
 
 /* we initialize an instance of our global state */
 struct mwc_server server;
@@ -391,6 +392,14 @@ main(int argc, char *argv[]) {
   server.pointer_contrains_manager = wlr_pointer_constraints_v1_create(server.wl_display);
   server.new_contraint.notify = server_handle_new_constraint;
   wl_signal_add(&server.pointer_contrains_manager->events.new_constraint, &server.new_contraint);
+
+	server.xdg_activation = wlr_xdg_activation_v1_create(server.wl_display);
+
+	server.xdg_activation_request.notify = xdg_activation_handle_request;
+	wl_signal_add(&server.xdg_activation->events.request_activate, &server.xdg_activation_request);
+
+	server.xdg_activation_new_token.notify = xdg_activation_handle_new_token;
+	wl_signal_add(&server.xdg_activation->events.new_token, &server.xdg_activation_new_token);
 
   /* Add a Unix socket to the Wayland display. */
   const char *socket = wl_display_add_socket_auto(server.wl_display);

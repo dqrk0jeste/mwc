@@ -24,6 +24,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
+#include <wlr/types/wlr_xdg_activation_v1.h>
 #include <wlr/util/log.h>
 #include <wlr/util/edges.h>
 
@@ -1063,4 +1064,43 @@ toplevel_tiled_insert_into_layout(struct mwc_toplevel *toplevel, uint32_t x, uin
       wl_list_insert(workspace->slaves.prev, &last->link);
     }
   }
+}
+
+void
+xdg_activation_handle_token_destroy(struct wl_listener *listener, void *data) {
+	struct mwc_token *token_data = wl_container_of(listener, token_data, destroy);
+	wl_list_remove(&token_data->destroy.link);
+
+	free(token_data);
+}
+
+void
+xdg_activation_handle_new_token(struct wl_listener *listener, void *data) {
+	struct wlr_xdg_activation_token_v1 *wlr_token = data;
+  if(wlr_token->surface == NULL || wlr_token->seat == NULL) return;
+
+	struct mwc_token *token = calloc(1, sizeof(*token));
+  token->wlr_token = wlr_token;
+	wlr_token->data = token;
+
+	token->destroy.notify = xdg_activation_handle_token_destroy;
+	wl_signal_add(&wlr_token->events.destroy, &token->destroy);
+}
+
+void
+xdg_activation_handle_request(struct wl_listener *listener, void *data) {
+	const struct wlr_xdg_activation_v1_request_activate_event *event = data;
+
+	struct wlr_xdg_surface *xdg_surface = wlr_xdg_surface_try_from_wlr_surface(event->surface);
+	if(xdg_surface == NULL) return;
+
+	struct wlr_scene_tree *tree = xdg_surface->data;
+  if(tree == NULL) return;
+
+  struct mwc_something *something = tree->node.data;
+  if(something == NULL || something->type != MWC_TOPLEVEL) return;
+
+  struct mwc_toplevel *toplevel = something->toplevel;
+
+  focus_toplevel(toplevel);
 }
