@@ -6,6 +6,7 @@
 #include "ipc.h"
 #include "layout.h"
 #include "mwc.h"
+#include "popup.h"
 #include "rendering.h"
 #include "something.h"
 #include "workspace.h"
@@ -1095,10 +1096,18 @@ xdg_activation_handle_request(struct wl_listener *listener, void *data) {
 	if(xdg_surface == NULL) return;
 
 	struct wlr_scene_tree *tree = xdg_surface->data;
+  /* this happens if the toplevel has not been mapped yet. anyway it does not make sense to
+   * request that i activate this surface that is not on the screen */
   if(tree == NULL) return;
 
   struct mwc_something *something = tree->node.data;
-  if(something == NULL || something->type != MWC_TOPLEVEL) return;
+  if(something == NULL) return;
+
+  if(something->type == MWC_POPUP) {
+    something = popup_get_root_parent(something->popup);
+  }
+
+  if(something->type != MWC_TOPLEVEL) return;
 
   struct mwc_toplevel *toplevel = something->toplevel;
 

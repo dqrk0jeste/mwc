@@ -86,3 +86,17 @@ xdg_popup_handle_destroy(struct wl_listener *listener, void *data) {
 
   free(popup);
 }
+
+struct mwc_something *
+popup_get_root_parent(struct mwc_popup *popup) {
+  struct wlr_scene_tree *tree = popup->scene_tree;
+
+  struct mwc_something *something = tree->node.data;
+  while(something == NULL || something->type == MWC_POPUP) {
+    tree = tree->node.parent;
+    something = tree->node.data;
+  }
+
+  return something;
+}
+
