@@ -27,6 +27,8 @@ server_handle_new_popup(struct wl_listener *listener, void *data) {
   if(xdg_popup->parent != NULL) {
     struct wlr_xdg_surface *parent = wlr_xdg_surface_try_from_wlr_surface(xdg_popup->parent);
     struct wlr_scene_tree *parent_tree = parent->data;
+    if(parent_tree == NULL) return;
+
     popup->scene_tree = wlr_scene_xdg_surface_create(parent_tree, xdg_popup->base);
 
     xdg_popup->base->data = popup->scene_tree;
