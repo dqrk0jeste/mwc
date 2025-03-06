@@ -6,7 +6,10 @@
 <br>
 
 ## about
-`mwc` came to existence out of pure will to create a compositor tailored to my taste and needs. the whole point of `mwc` is to be as simple and predictable to use and not get in the way of its user with any confusing behaviour. i choose master (stack) layout (hence the name `master wayland compositor`), because it is dead simple - tiling is done in a really easy-to-understand manner - toplevels are stacked horizontally until the `master_count`-th one, and then vertically. all the features implemented up to this point (and all that will be implemented it the future) are done in the simplest possible way i could think off, and all the features requested are added only if they provide something to the end user while maintaining the current simplicity of the compositor.
+`mwc` came to existence out of pure will to create a compositor tailored to my taste and needs. the whole point of `mwc` is to be as simple and predictable to use and not get in the way of its user with any confusing behaviour. i choose master (stack) layout (hence the name `master wayland compositor`), because it is dead simple - tiling is done in a really easy-to-understand manner - toplevels are stacked horizontally until the `master_count`-th one, and then vertically.
+
+all the features implemented up to this point (and all that will be implemented it the future) are done in the simplest possible way i could think off, and all the features requested are added only if they provide something to the end user while maintaining the current simplicity of the compositor.
+
 although `mwc` is aiming to be really simple in its behaviour, it does provide a lot of (opt-in) features to improve its looks such as animations, transparency, rounded corners, blur etc. these are here for all the users who like thinkering with their setup and can be disabled completely, or used in any capacity.
 
 ## features
