@@ -87,8 +87,8 @@ executable('mwc-ipc',
   install: true
 )
 
-install_data('default.conf', install_dir: '/usr/share/mwc')
-install_data('LICENSE', install_dir: '/usr/share/licenses/mwc')
-install_data('mwc.desktop', install_dir: '/usr/share/wayland-sessions')
-install_data('mwc-portals.conf', install_dir: '/usr/share/xdg-desktop-portal')
+install_data('default.conf', install_dir: get_option('datadir') / 'mwc')
+install_data('LICENSE', install_dir: get_option('datadir') / 'licenses/mwc')
+install_data('mwc.desktop', install_dir: get_option('datadir') / 'wayland-sessions')
+install_data('mwc-portals.conf', install_dir: get_option('datadir') / 'xdg-desktop-portal')
 
