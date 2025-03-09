@@ -1,6 +1,7 @@
 #pragma once
 
 #include "helpers.h"
+#include "mwc.h"
 
 #include <scenefx/types/fx/blur_data.h>
 #include <scenefx/types/fx/corner_location.h>
@@ -14,6 +15,12 @@
 #include <wayland-server-protocol.h>
 
 #define BAKED_POINTS_COUNT 256
+
+enum mwc_decorations {
+  MWC_DECORATIONS_NONE,
+  MWC_DECORATIONS_CLIENT_SIDE,
+  MWC_DECORATIONS_SERVER_SIDE,
+};
 
 struct window_rule_regex {
   bool has_app_id_regex;
@@ -152,7 +159,14 @@ struct mwc_config {
 
   uint32_t master_count;
   double master_ratio;
-  bool client_side_decorations;
+
+  enum mwc_decorations decorations;
+
+  uint32_t titlebar_size;
+  enum mwc_direction titlebar_position;
+  float titlebar_color[4];
+  enum mwc_direction titlebar_close_button_position;
+  float titlebar_close_button_color[4];
 
   /* animations stuff */
   bool animations;

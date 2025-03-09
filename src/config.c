@@ -654,7 +654,9 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
   } else if(strcmp(keyword, "client_side_decorations") == 0) {
     if(arg_count < 1) goto invalid;
 
-    c->client_side_decorations = atoi(args[0]);
+    if(atoi(args[0]) != 0) {
+      c->decorations = MWC_DECORATIONS_CLIENT_SIDE;
+    }
   } else if(strcmp(keyword, "inactive_opacity") == 0) {
     if(arg_count < 1) goto invalid;
 
@@ -759,6 +761,63 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     if(arg_count < 2) goto invalid;
     
     config_add_layer_rule(c, args[0], args[1], &args[2], arg_count - 2);
+  } else if(strcmp(keyword, "decorations") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    if(strcmp(args[0], "client") == 0) {
+      c->decorations = MWC_DECORATIONS_CLIENT_SIDE;
+    } else if(strcmp(args[0], "server") == 0) {
+      c->decorations = MWC_DECORATIONS_SERVER_SIDE;
+    } else if(strcmp(args[0], "none") == 0) {
+      c->decorations = MWC_DECORATIONS_NONE;
+    }
+  } else if(strcmp(keyword, "titlebar_size") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->titlebar_size = max(atoi(args[0]), 0);
+  } else if(strcmp(keyword, "titlebar_position") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    enum mwc_direction direction;
+    if(strcmp(args[0], "top") == 0) {
+      direction = MWC_UP;
+    } else if(strcmp(args[0], "right") == 0) {
+      direction = MWC_RIGHT;
+    } else if(strcmp(args[0], "bottom") == 0) {
+      direction = MWC_DOWN;
+    } else if(strcmp(args[0], "left") == 0) {
+      direction = MWC_LEFT;
+    } else {
+      goto invalid;
+    }
+    
+
+    c->titlebar_position = direction;
+  } else if(strcmp(keyword, "titlebar_color")) {
+    if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_color)) {
+      goto invalid;
+    }
+  } else if(strcmp(keyword, "titlebar_close_button_position") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    enum mwc_direction direction;
+    if(strcmp(args[0], "top") == 0) {
+      direction = MWC_UP;
+    } else if(strcmp(args[0], "right") == 0) {
+      direction = MWC_RIGHT;
+    } else if(strcmp(args[0], "bottom") == 0) {
+      direction = MWC_DOWN;
+    } else if(strcmp(args[0], "left") == 0) {
+      direction = MWC_LEFT;
+    } else {
+      goto invalid;
+    }
+
+    c->titlebar_close_button_position = direction;
+  } else if(strcmp(keyword, "titlebar_close_button_color")) {
+    if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_close_button_color)) {
+      goto invalid;
+    }
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
@@ -770,7 +829,7 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
   config_free_args(args, arg_count);
   return true;
 
-invalid: 
+invalid:
   wlr_log(WLR_ERROR, "invalid args to %s", keyword);
 depricated:
   free(keyword);
@@ -1333,7 +1392,7 @@ config_reload() {
   }
 
   wlr_server_decoration_manager_set_default_mode(server.kde_decoration_manager,
-                                                 c->client_side_decorations
+                                                 c->decorations == MWC_DECORATIONS_CLIENT_SIDE
                                                  ? WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT
                                                  : WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
 

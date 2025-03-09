@@ -12,12 +12,11 @@
 extern struct mwc_server server;
 
 void
-calculate_masters_dimensions(struct mwc_output *output, uint32_t master_count,
-                             uint32_t slave_count, uint32_t *width, uint32_t *height) {
+calculate_masters_container_size(struct mwc_output *output, uint32_t master_count,
+                                 uint32_t slave_count, uint32_t *width, uint32_t *height) {
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
   double master_ratio = server.config->master_ratio;
-  double border_width = server.config->border_width;
 
   struct wlr_box output_box = output->usable_area;
 
@@ -25,36 +24,33 @@ calculate_masters_dimensions(struct mwc_output *output, uint32_t master_count,
     ? output_box.width * master_ratio
     : output_box.width;
 
-  uint32_t total_decorations = slave_count > 0
+  uint32_t total_gaps = slave_count > 0
     ? outer_gaps // left outer gaps
-      + master_count * 2 * border_width // all borders
       + (master_count - 1) * 2 * inner_gaps // inner gaps between masters
       + inner_gaps // right inner gaps 
     : outer_gaps // left outer gaps
-      + master_count * 2 * border_width // all borders
       + (master_count - 1) * 2 * inner_gaps // inner gaps between masters
       + outer_gaps; // right outer gaps
 
-  *width = (total_width - total_decorations) / master_count;
-  *height = output_box.height - 2 * outer_gaps - 2 * border_width;
+  *width = (total_width - total_gaps) / master_count;
+  *height = output_box.height - 2 * outer_gaps;
 }
 
 void
-calculate_slaves_dimensions(struct mwc_output *output, uint32_t slave_count,
-                            uint32_t *width, uint32_t *height) {
+calculate_slaves_container_size(struct mwc_output *output, uint32_t slave_count,
+                                 uint32_t *width, uint32_t *height) {
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
   double master_ratio = server.config->master_ratio;
-  double border_width = server.config->border_width;
 
   struct wlr_box output_box = output->usable_area;
 
-  *width = output_box.width * (1 - master_ratio)
-    - outer_gaps - inner_gaps
-    - 2 * border_width;
-  *height = (output_box.height - 2 * outer_gaps
-    - (slave_count - 1) * 2 * inner_gaps
-    - slave_count * 2 * border_width) / slave_count;
+  uint32_t total_gaps = outer_gaps // top outer gaps
+    + (slave_count - 1) * 2 * inner_gaps // inner gaps between slaves
+    + outer_gaps; // bottom outer gaps
+
+  *width = output_box.width * (1 - master_ratio) - outer_gaps - inner_gaps;
+  *height = (output_box.height - total_gaps) / slave_count;
 }
 
 bool
@@ -87,46 +83,49 @@ layout_set_pending_state(struct mwc_workspace *workspace) {
 
   uint32_t outer_gaps = server.config->outer_gaps;
   uint32_t inner_gaps = server.config->inner_gaps;
-  double master_ratio = server.config->master_ratio;
-  double border_width = server.config->border_width;
 
   uint32_t slave_count = wl_list_length(&workspace->slaves);
   uint32_t master_count = wl_list_length(&workspace->masters);
 
-  uint32_t master_width, master_height;
-  calculate_masters_dimensions(output, master_count, slave_count,
-                               &master_width, &master_height);
+  uint32_t container_width, container_height, width, height, x, y;
+  calculate_masters_container_size(output, master_count, slave_count,
+                                   &container_width, &container_height);
 
-  struct mwc_toplevel *m;
+  struct mwc_toplevel *toplevel;
   size_t i = 0;
-  wl_list_for_each(m, &workspace->masters, link) {
-    uint32_t master_x = output->usable_area.x + outer_gaps
-      + (master_width + 2 * border_width) * i
-      + 2 * inner_gaps * i
-      + border_width;
-    uint32_t master_y = output->usable_area.y + outer_gaps
-      + border_width;
+  wl_list_for_each(toplevel, &workspace->masters, link) {
+    width = container_width;
+    height = container_height;
+    toplevel_strip_decorations_of_size(toplevel, &width, &height);
 
-    toplevel_set_pending_state(m, master_x, master_y, master_width, master_height);
+    x = output->usable_area.x + outer_gaps
+      + container_width * i
+      + inner_gaps * 2 * i;
+    y = output->usable_area.y + outer_gaps;
+    toplevel_adjust_buffer_start_position(toplevel, &x, &y);
+
+    toplevel_set_pending_state(toplevel, x, y, width, height);
     i++;
   }
 
   if(slave_count == 0) return;
 
-  /* share the remaining space among slaves */
-  uint32_t slave_width, slave_height, slave_x, slave_y;
-  calculate_slaves_dimensions(workspace->output, slave_count, &slave_width, &slave_height);
+  calculate_slaves_container_size(workspace->output, slave_count,
+                                  &container_width, &container_height);
 
-  struct mwc_toplevel *s;
   i = 0;
-  wl_list_for_each(s, &workspace->slaves, link) {
-    slave_x = output->usable_area.x + output->usable_area.width * master_ratio
-      + inner_gaps + border_width;
-    slave_y = output->usable_area.y + outer_gaps
-      + i * (slave_height + inner_gaps * 2 + 2 * border_width)
-      + border_width;
+  wl_list_for_each(toplevel, &workspace->slaves, link) {
+    width = container_width;
+    height = container_height;
+    toplevel_strip_decorations_of_size(toplevel, &width, &height);
 
-    toplevel_set_pending_state(s, slave_x, slave_y, slave_width, slave_height);
+    x = output->usable_area.x + output->usable_area.width * server.config->master_ratio + inner_gaps;
+    y = output->usable_area.y + outer_gaps
+      + container_height * i
+      + inner_gaps * 2 * i;
+    toplevel_adjust_buffer_start_position(toplevel, &x, &y);
+
+    toplevel_set_pending_state(toplevel, x, y, width, height);
     i++;
   }
 }

@@ -6,12 +6,12 @@
 #include <stdint.h>
 
 void
-calculate_masters_dimensions(struct mwc_output *output, uint32_t master_count,
-                             uint32_t slave_count, uint32_t *width, uint32_t *height);
+calculate_masters_container_size(struct mwc_output *output, uint32_t master_count,
+                                uint32_t slave_count, uint32_t *width, uint32_t *height);
 
 void
-calculate_slaves_dimensions(struct mwc_output *output, uint32_t slave_count,
-                            uint32_t *width, uint32_t *height);
+calculate_slaves_container_size(struct mwc_output *output, uint32_t slave_count,
+                                uint32_t *width, uint32_t *height);
 
 bool
 toplevel_is_master(struct mwc_toplevel *toplevel);

@@ -92,20 +92,24 @@ toplevel_handle_initial_commit(struct mwc_toplevel *toplevel) {
   /* when an xdg_surface performs an initial commit, the compositor must
    * reply with a configure so the client can map the surface. */
   toplevel->floating = toplevel_should_float(toplevel);
+  toplevel->titlebar.has = toplevel_should_draw_titlebar(toplevel);
 
   uint32_t width, height;
   if(toplevel->floating) {
     /* we lookup window rules and send a configure */
-    toplevel_floating_size(toplevel, &width, &height);
+    toplevel_floating_container_size(toplevel, &width, &height);
+    toplevel_strip_decorations_of_size(toplevel, &width, &height);
   } else {
     struct mwc_output *output = toplevel->workspace->output;
 
     uint32_t master_count = wl_list_length(&toplevel->workspace->masters);
     uint32_t slave_count = wl_list_length(&toplevel->workspace->slaves);
     if(master_count < server.config->master_count) {
-      calculate_masters_dimensions(output, master_count + 1, slave_count, &width, &height);
+      calculate_masters_container_size(output, master_count + 1, slave_count, &width, &height);
+    toplevel_strip_decorations_of_size(toplevel, &width, &height);
     } else {
-      calculate_slaves_dimensions(output, slave_count + 1, &width, &height);
+      calculate_slaves_container_size(output, slave_count + 1, &width, &height);
+      toplevel_strip_decorations_of_size(toplevel, &width, &height);
     }
   }
 
@@ -563,7 +567,7 @@ toplevel_matches_window_rule(struct mwc_toplevel *toplevel,
 }
 
 void
-toplevel_floating_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+toplevel_floating_container_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   struct window_rule_size *w;
   wl_list_for_each(w, &server.config->window_rules.size, link) {
     if(toplevel_matches_window_rule(toplevel, &w->condition)) {
@@ -585,6 +589,48 @@ toplevel_floating_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t 
 
   *width = 0;
   *height = 0;
+}
+
+void
+toplevel_strip_decorations_of_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+  *width -= 2 * server.config->border_width;
+  *height -= 2 * server.config->border_width;
+  if(!toplevel->titlebar.has) return;
+
+  switch(server.config->titlebar_position) {
+    case MWC_UP:
+    case MWC_DOWN: {
+      *height -= server.config->titlebar_size;
+      return;
+    }
+    case MWC_RIGHT:
+    case MWC_LEFT: {
+      *width -= server.config->titlebar_size;
+      return;
+    }
+  }
+}
+
+void
+toplevel_adjust_buffer_start_position(struct mwc_toplevel *toplevel, uint32_t *x, uint32_t *y) {
+  *x += server.config->border_width;
+  *y += server.config->border_width;
+
+  if(!toplevel->titlebar.has) return;
+  
+  switch(server.config->titlebar_position) {
+    case MWC_UP: {
+      *y += server.config->titlebar_size;
+      return;
+    }
+    case MWC_LEFT: {
+      *x += server.config->titlebar_size;
+      return;
+    }
+    default: {
+      return;
+    }
+  }
 }
 
 bool
@@ -609,6 +655,22 @@ toplevel_should_float(struct mwc_toplevel *toplevel) {
   }
 
   return false;
+}
+
+bool
+toplevel_should_draw_titlebar(struct mwc_toplevel *toplevel) {
+  return server.config->decorations == MWC_DECORATIONS_SERVER_SIDE;
+
+  /* TODO: add windowrules for this */
+
+  /*struct window_rule_float *w;*/
+  /*wl_list_for_each(w, &server.config->window_rules.floating, link) {*/
+  /*  if(toplevel_matches_window_rule(toplevel, &w->condition)) {*/
+  /*    return true;*/
+  /*  }*/
+  /*}*/
+  /**/
+  /*return false;*/
 }
 
 struct mwc_toplevel *
@@ -991,7 +1053,27 @@ toplevel_get_primary_output(struct mwc_toplevel *toplevel) {
 }
 
 void
-toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+toplevel_get_container_start_position(struct mwc_toplevel *toplevel, int32_t *x, int32_t *y) {
+  *x = - server.config->border_width;
+  *y = - server.config->border_width;
+
+  if(!toplevel->titlebar.has) return;
+
+  switch(server.config->titlebar_position) {
+    case MWC_UP: {
+      *y -= server.config->titlebar_size;
+      return;
+    }
+    case MWC_LEFT: {
+      *x -= server.config->titlebar_size;
+      return;
+    }
+    default: return;
+  }
+}
+
+void
+toplevel_get_current_buffer_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width = toplevel->animation.running
     ? toplevel->animation.current.width
     : toplevel->current.width;
@@ -999,6 +1081,29 @@ toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_
   *height = toplevel->animation.running
     ? toplevel->animation.current.height
     : toplevel->current.height;
+}
+
+void
+toplevel_get_current_container_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
+  toplevel_get_current_buffer_size(toplevel, width, height);
+
+  *width += 2 * server.config->border_width;
+  *height += 2 * server.config->border_width;
+
+  if(!toplevel->titlebar.has) return;
+
+  switch(server.config->titlebar_position) {
+    case MWC_UP:
+    case MWC_DOWN: {
+      *height += server.config->titlebar_size;
+      return;
+    }
+    case MWC_RIGHT:
+    case MWC_LEFT: {
+      *width += server.config->titlebar_size;
+      return;
+    }
+  }
 }
 
 uint32_t

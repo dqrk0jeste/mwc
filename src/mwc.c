@@ -356,7 +356,7 @@ main(int argc, char *argv[]) {
 
   server.kde_decoration_manager = wlr_server_decoration_manager_create(server.wl_display);
   wlr_server_decoration_manager_set_default_mode(server.kde_decoration_manager,
-                                                 server.config->client_side_decorations
+                                                 server.config->decorations == MWC_DECORATIONS_CLIENT_SIDE
                                                  ? WLR_SERVER_DECORATION_MANAGER_MODE_CLIENT
                                                  : WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
 

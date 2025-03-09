@@ -42,6 +42,12 @@ struct mwc_toplevel {
 
   struct mwc_animation animation;
 
+  struct {
+    bool has;
+    struct wlr_scene_rect *base;
+    struct wlr_scene_rect *close_button;
+  } titlebar;
+
   struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel_handle;
 
   struct wl_listener map;
@@ -66,7 +72,13 @@ struct mwc_token {
 };
 
 void
-toplevel_get_actual_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
+toplevel_get_container_start_position(struct mwc_toplevel *toplevel, int32_t *x, int32_t *y);
+
+void
+toplevel_get_current_container_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
+
+void
+toplevel_get_current_buffer_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
 
 struct wlr_box
 toplevel_get_geometry(struct mwc_toplevel *toplevel);
@@ -121,10 +133,19 @@ toplevel_matches_window_rule(struct mwc_toplevel *toplevel,
                              struct window_rule_regex *condition);
 
 void
-toplevel_floating_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
+toplevel_floating_container_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
+
+void
+toplevel_strip_decorations_of_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height);
+
+void
+toplevel_adjust_buffer_start_position(struct mwc_toplevel *toplevel, uint32_t *x, uint32_t *y);
 
 bool
 toplevel_should_float(struct mwc_toplevel *toplevel);
+
+bool
+toplevel_should_draw_titlebar(struct mwc_toplevel *toplevel);
 
 void
 cursor_jump_focused_toplevel(void);
