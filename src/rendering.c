@@ -12,6 +12,7 @@
 #include "config.h"
 #include "workspace.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -23,41 +24,67 @@
 extern struct mwc_server server;
 
 void
+toplevel_create_titlebar(struct mwc_toplevel *toplevel, uint32_t width, uint32_t height) {
+  assert(toplevel->titlebar.tree == NULL);
+
+  toplevel->titlebar.tree = wlr_scene_tree_create(toplevel->scene_tree);
+  toplevel->titlebar.tree->node.data = toplevel;
+
+  toplevel->titlebar.base = wlr_scene_rect_create(toplevel->titlebar.tree, 0, 0,
+                                                  server.config->titlebar_color);
+  wlr_scene_node_lower_to_bottom(&toplevel->titlebar.base->node);
+  wlr_scene_node_set_position(&toplevel->titlebar.tree->node, 0, -server.config->titlebar_height);
+  wlr_scene_rect_set_corner_radius(toplevel->titlebar.base, server.config->border_radius,
+                                   CORNER_LOCATION_TOP & server.config->border_radius_location);
+  toplevel->titlebar.base_something.type = MWC_TITLEBAR_BASE;
+  toplevel->titlebar.base_something.rect = toplevel->titlebar.base;
+
+  if(server.config->blur) {
+    wlr_scene_rect_set_backdrop_blur(toplevel->titlebar.base, true);
+    wlr_scene_rect_set_backdrop_blur_optimized(toplevel->titlebar.base, true);
+  }
+
+  if(server.config->titlebar_include_close_button) {
+    uint32_t size = server.config->titlebar_close_button_size;
+    toplevel->titlebar.close_button = wlr_scene_rect_create(toplevel->titlebar.tree, size, size,
+                                                            server.config->titlebar_close_button_color);
+
+    if(!server.config->titlebar_close_button_square) {
+       wlr_scene_rect_set_corner_radius(toplevel->titlebar.close_button, size / 2, CORNER_LOCATION_ALL);
+    }
+
+    toplevel->titlebar.close_button_something.type = MWC_TITLEBAR_CLOSE_BUTTON;
+    toplevel->titlebar.close_button_something.rect = toplevel->titlebar.close_button;
+  }
+
+  wlr_scene_node_lower_to_bottom(&toplevel->titlebar.tree->node);
+}
+
+void
 toplevel_draw_titlebar(struct mwc_toplevel *toplevel) {
+  if(toplevel->titlebar.tree != NULL && toplevel->fullscreen) {
+    wlr_scene_node_set_enabled(&toplevel->titlebar.tree->node, false);
+    return;
+  }
+
   uint32_t width, height;
   toplevel_get_current_buffer_size(toplevel, &width, &height);
 
-  if(toplevel->titlebar.base == NULL) {
-    toplevel->titlebar.base = wlr_scene_rect_create(toplevel->scene_tree, 0, 0, server.config->titlebar_color);
-    wlr_scene_node_lower_to_bottom(&toplevel->titlebar.base->node);
+  if(toplevel->titlebar.tree == NULL) {
+    toplevel_create_titlebar(toplevel, width, height);
   }
 
-  int32_t x, y;
-  switch(server.config->titlebar_position) {
-    case MWC_UP: {
-      x = 0; 
-      y = -server.config->titlebar_size;
-      break;
-    }
-    case MWC_RIGHT: {
-      x = width; 
-      y = 0;
-      break;
-    }
-    case MWC_DOWN: {
-      x = 0; 
-      y = height;
-      break;
-    }
-    case MWC_LEFT: {
-      x = -server.config->titlebar_size; 
-      y = 0;
-      break;
-    }
-  }
+  wlr_scene_node_set_enabled(&toplevel->titlebar.tree->node, true);
 
-  wlr_scene_node_set_position(&toplevel->scene_tree->node, x, y);
-  wlr_scene_rect_set_size(toplevel->titlebar.base, width, height);
+  wlr_scene_rect_set_size(toplevel->titlebar.base, width, server.config->titlebar_height);
+
+  if(server.config->titlebar_include_close_button) {
+    uint32_t x = server.config->titlebar_close_button_left
+      ? server.config->titlebar_close_button_padding
+      : width - server.config->titlebar_close_button_padding - server.config->titlebar_close_button_size;
+    uint32_t y = (server.config->titlebar_height - server.config->titlebar_close_button_size) / 2;
+    wlr_scene_node_set_position(&toplevel->titlebar.close_button->node, x, y);
+  }
 }
 
 void
@@ -113,6 +140,7 @@ struct iter_scene_buffer_apply_blur_args {
   double height_scale;
   double opacity;
   uint32_t border_radius;
+  bool has_titlebar;
 };
 
 void
@@ -144,6 +172,7 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   enum corner_location corners = 0;
 
   if(server.config->border_radius_location & CORNER_LOCATION_TOP_LEFT
+     && !args->has_titlebar
      && x == 0
      && y == 0) {
     corners |= CORNER_LOCATION_TOP_LEFT;
@@ -156,6 +185,7 @@ iter_scene_buffer_apply_effects(struct wlr_scene_buffer *buffer,
   }
 
   if(server.config->border_radius_location & CORNER_LOCATION_TOP_RIGHT
+     && !args->has_titlebar
      && x + surface->current.width == args->geometry.width
      && y == 0) {
     corners |= CORNER_LOCATION_TOP_RIGHT;
@@ -211,6 +241,7 @@ toplevel_apply_effects(struct mwc_toplevel *toplevel) {
     .height_scale = (double)height / geometry.height,
     .opacity = opacity,
     .border_radius = border_radius,
+    .has_titlebar = toplevel->titlebar.has,
   };
 
   wlr_scene_node_for_each_buffer(&toplevel->scene_tree->node,
@@ -314,8 +345,8 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
   };
 
   struct wlr_box shadow_box = {
-    .x = x + server.config->shadows_position.x,
-    .y = y + server.config->shadows_position.y,
+    .x = server.config->shadows_position.x,
+    .y = server.config->shadows_position.y,
     .width = width + server.config->shadows_size,
     .height = height + server.config->shadows_size,
   };
@@ -339,7 +370,9 @@ toplevel_draw_shadow(struct mwc_toplevel *toplevel) {
                                                server.config->shadows_blur,
                                                server.config->shadows_color);
     wlr_scene_node_lower_to_bottom(&toplevel->shadow->node);
-    wlr_scene_node_set_position(&toplevel->shadow->node, shadow_box.x, shadow_box.y);
+    wlr_scene_node_set_position(&toplevel->shadow->node,
+                                x + server.config->shadows_position.x,
+                                y + server.config->shadows_position.y);
   }
 
   wlr_scene_node_set_enabled(&toplevel->shadow->node, true);
@@ -365,6 +398,9 @@ toplevel_draw_frame(struct mwc_toplevel *toplevel) {
   }
   if(server.config->shadows) {
     toplevel_draw_shadow(toplevel);
+  }
+  if(toplevel->titlebar.has) {
+    toplevel_draw_titlebar(toplevel);
   }
   toplevel_apply_clip(toplevel);
   toplevel_apply_effects(toplevel);

@@ -20,10 +20,10 @@
 #define STRING_INITIAL_LENGTH 64
 
 enum mwc_direction {
-  MWC_UP,
-  MWC_RIGHT,
-  MWC_DOWN,
-  MWC_LEFT,
+  MWC_UP = 1 << 0,
+  MWC_RIGHT = 1 << 1,
+  MWC_DOWN = 1 << 2,
+  MWC_LEFT = 1 << 3,
 };
 
 struct mwc_server {

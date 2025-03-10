@@ -6,6 +6,7 @@
 #include "layer_surface.h"
 #include "session_lock.h"
 
+#include <assert.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_scene.h>
@@ -49,31 +50,41 @@ root_parent_of_surface(struct wlr_surface *wlr_surface) {
 }
 
 struct mwc_something *
-something_at(double lx, double ly, struct wlr_surface **surface,
-             double *sx, double *sy) {
+something_at(double lx, double ly, struct wlr_surface **surface, double *sx, double *sy) {
   /* this returns the topmost node in the scene at the given layout coords */
   struct wlr_scene_node *node = wlr_scene_node_at(&server.scene->tree.node,
                                                   lx, ly, sx, sy);
-  if(node == NULL || node->type != WLR_SCENE_NODE_BUFFER) {
-    return NULL;
+  if(node == NULL) return NULL;
+
+  if(node->type == WLR_SCENE_NODE_RECT) {
+    struct mwc_toplevel *toplevel = node->parent->node.data;
+    assert(toplevel != NULL);
+
+    struct wlr_scene_rect *rect = wlr_scene_rect_from_node(node);
+    if(rect == toplevel->titlebar.base) {
+      return &toplevel->titlebar.base_something;
+    } else {
+      return &toplevel->titlebar.close_button_something;
+    }
+  } else if(node->type == WLR_SCENE_NODE_BUFFER) {
+    struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
+    struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(scene_buffer);
+    if(scene_surface == NULL) {
+      return NULL;
+    }
+
+    *surface = scene_surface->surface;
+
+    struct wlr_scene_tree *tree = node->parent;
+    struct mwc_something *something = tree->node.data;
+    while(something == NULL || something->type == MWC_POPUP) {
+      tree = tree->node.parent;
+      something = tree->node.data;
+    }
+
+    return something;
   }
 
-  struct wlr_scene_buffer *scene_buffer = wlr_scene_buffer_from_node(node);
-  struct wlr_scene_surface *scene_surface =
-    wlr_scene_surface_try_from_buffer(scene_buffer);
-  if(scene_surface == NULL) {
-    return NULL;
-  }
-
-  *surface = scene_surface->surface;
-
-  struct wlr_scene_tree *tree = node->parent;
-  struct mwc_something *something = tree->node.data;
-  while(something == NULL || something->type == MWC_POPUP) {
-    tree = tree->node.parent;
-    something = tree->node.data;
-  }
-
-  return something;
+  return NULL;
 }
 

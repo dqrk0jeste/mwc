@@ -450,8 +450,6 @@ config_add_keybind(struct mwc_config *c, char *modifiers, char *key,
     k->action = keybind_prev_workspace;
   } else if(strcmp(action, "toggle_fullscreen") == 0) {
     k->action = keybind_focused_toplevel_toggle_fullscreen;
-  } else if(strcmp(action, "reload_config") == 0) {
-    k->action = keybind_reload_config;
   } else {
     wlr_log(WLR_ERROR, "invalid keybind action %s", action);
     free(k);
@@ -771,53 +769,46 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     } else if(strcmp(args[0], "none") == 0) {
       c->decorations = MWC_DECORATIONS_NONE;
     }
-  } else if(strcmp(keyword, "titlebar_size") == 0) {
+  } else if(strcmp(keyword, "titlebar_height") == 0) {
     if(arg_count < 1) goto invalid;
 
-    c->titlebar_size = max(atoi(args[0]), 0);
-  } else if(strcmp(keyword, "titlebar_position") == 0) {
-    if(arg_count < 1) goto invalid;
-
-    enum mwc_direction direction;
-    if(strcmp(args[0], "top") == 0) {
-      direction = MWC_UP;
-    } else if(strcmp(args[0], "right") == 0) {
-      direction = MWC_RIGHT;
-    } else if(strcmp(args[0], "bottom") == 0) {
-      direction = MWC_DOWN;
-    } else if(strcmp(args[0], "left") == 0) {
-      direction = MWC_LEFT;
-    } else {
-      goto invalid;
-    }
-    
-
-    c->titlebar_position = direction;
-  } else if(strcmp(keyword, "titlebar_color")) {
+    c->titlebar_height = max(atoi(args[0]), 0);
+  } else if(strcmp(keyword, "titlebar_color") == 0) {
     if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_color)) {
       goto invalid;
     }
+  } else if(strcmp(keyword, "titlebar_include_close_button") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->titlebar_include_close_button = atoi(args[0]);
+  } else if(strcmp(keyword, "titlebar_close_button_size") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->titlebar_close_button_size = atoi(args[0]);
   } else if(strcmp(keyword, "titlebar_close_button_position") == 0) {
     if(arg_count < 1) goto invalid;
 
-    enum mwc_direction direction;
-    if(strcmp(args[0], "top") == 0) {
-      direction = MWC_UP;
-    } else if(strcmp(args[0], "right") == 0) {
-      direction = MWC_RIGHT;
-    } else if(strcmp(args[0], "bottom") == 0) {
-      direction = MWC_DOWN;
-    } else if(strcmp(args[0], "left") == 0) {
-      direction = MWC_LEFT;
-    } else {
-      goto invalid;
+    if(strcmp(args[0], "left") == 0) {
+      c->titlebar_close_button_left = true;
     }
+  } else if(strcmp(keyword, "titlebar_close_button_padding") == 0) {
+    if(arg_count < 1) goto invalid;
 
-    c->titlebar_close_button_position = direction;
-  } else if(strcmp(keyword, "titlebar_close_button_color")) {
+    c->titlebar_close_button_padding = atoi(args[0]);
+  } else if(strcmp(keyword, "titlebar_close_button_shape") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    if(strcmp(args[0], "square") == 0) {
+      c->titlebar_close_button_square = true;
+    }
+  } else if(strcmp(keyword, "titlebar_close_button_color") == 0) {
     if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_close_button_color)) {
       goto invalid;
     }
+  } else if(strcmp(keyword, "titlebar_center_title") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->titlebar_center_title = atoi(args[0]);
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
@@ -1205,6 +1196,11 @@ toplevel_reapply_effects_etc(struct mwc_toplevel *toplevel) {
   if(toplevel->border != NULL) {
     wlr_scene_node_destroy(&toplevel->border->node);
     toplevel->border = NULL;
+  }
+
+  if(toplevel->titlebar.tree != NULL) {
+    wlr_scene_node_destroy(&toplevel->titlebar.tree->node);
+    toplevel->titlebar.tree = NULL;
   }
 }
 

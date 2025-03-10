@@ -162,11 +162,16 @@ struct mwc_config {
 
   enum mwc_decorations decorations;
 
-  uint32_t titlebar_size;
-  enum mwc_direction titlebar_position;
+  /* titlebar */
+  uint32_t titlebar_height;
   float titlebar_color[4];
-  enum mwc_direction titlebar_close_button_position;
+  bool titlebar_include_close_button;
+  uint32_t titlebar_close_button_size;
+  uint32_t titlebar_close_button_padding;
+  bool titlebar_close_button_square;
+  bool titlebar_close_button_left;
   float titlebar_close_button_color[4];
+  bool titlebar_center_title;
 
   /* animations stuff */
   bool animations;

@@ -205,6 +205,20 @@ pointer_handle_focus(uint32_t time, bool handle_keyboard_focus) {
     return;
   }
 
+  if(something->type == MWC_TITLEBAR_CLOSE_BUTTON) {
+    wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "pointer");
+  } else if(server.client_cursor.surface != NULL) {
+    wlr_cursor_set_surface(server.cursor, server.client_cursor.surface,
+                           server.client_cursor.hotspot_x, server.client_cursor.hotspot_y);
+  }
+
+  if((something->type == MWC_TITLEBAR_BASE || something->type == MWC_TITLEBAR_CLOSE_BUTTON)
+     && handle_keyboard_focus) {
+    struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
+    focus_toplevel(toplevel);
+    return;
+  }
+
   if(handle_keyboard_focus) {
     if(something->type == MWC_TOPLEVEL) {
       focus_toplevel(something->toplevel);
@@ -316,6 +330,18 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
 
     server_reset_cursor_mode();
     layout_set_pending_state(server.active_workspace);
+    return;
+  }
+
+  struct wlr_surface *surface;
+  double sx, sy;
+  struct mwc_something *something = something_at(server.cursor->x, server.cursor->y,
+                                                 &surface, &sx, &sy);
+
+  if(something->type == MWC_TITLEBAR_CLOSE_BUTTON
+     && event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
+    struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
+    wlr_xdg_toplevel_send_close(toplevel->xdg_toplevel);
   }
 }
 

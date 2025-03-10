@@ -1,12 +1,14 @@
 #pragma once
 
-#include <wlr/types/wlr_compositor.h>
+#include <scenefx/types/wlr_scene.h>
 
 enum mwc_type {
   MWC_TOPLEVEL,
   MWC_POPUP,
   MWC_LAYER_SURFACE,
   MWC_LOCK_SURFACE,
+  MWC_TITLEBAR_BASE,
+  MWC_TITLEBAR_CLOSE_BUTTON,
 };
 
 struct mwc_toplevel;
@@ -20,6 +22,7 @@ struct mwc_something {
     struct mwc_popup *popup;
     struct mwc_layer_surface *layer_surface;
     struct mwc_lock_surface *lock_surface;
+    struct wlr_scene_rect *rect;
   };
 };
 

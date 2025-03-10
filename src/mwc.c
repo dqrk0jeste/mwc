@@ -115,7 +115,6 @@ server_handle_request_cursor(struct wl_listener *listener, void *data) {
      * cursor moves between outputs */
     wlr_cursor_set_surface(server.cursor, event->surface,
                            event->hotspot_x, event->hotspot_y);
-    /* TODO: maybe this should be placed elsewhere */
     server.client_cursor.surface = event->surface;
     server.client_cursor.hotspot_x = event->hotspot_x;
     server.client_cursor.hotspot_y = event->hotspot_y;

@@ -595,19 +595,13 @@ void
 toplevel_strip_decorations_of_size(struct mwc_toplevel *toplevel, uint32_t *width, uint32_t *height) {
   *width -= 2 * server.config->border_width;
   *height -= 2 * server.config->border_width;
+
   if(!toplevel->titlebar.has) return;
 
-  switch(server.config->titlebar_position) {
-    case MWC_UP:
-    case MWC_DOWN: {
-      *height -= server.config->titlebar_size;
-      return;
-    }
-    case MWC_RIGHT:
-    case MWC_LEFT: {
-      *width -= server.config->titlebar_size;
-      return;
-    }
+  if(*height > server.config->titlebar_height) {
+    *height -= server.config->titlebar_height;
+  } else {
+    *height = 1;
   }
 }
 
@@ -618,19 +612,7 @@ toplevel_adjust_buffer_start_position(struct mwc_toplevel *toplevel, uint32_t *x
 
   if(!toplevel->titlebar.has) return;
   
-  switch(server.config->titlebar_position) {
-    case MWC_UP: {
-      *y += server.config->titlebar_size;
-      return;
-    }
-    case MWC_LEFT: {
-      *x += server.config->titlebar_size;
-      return;
-    }
-    default: {
-      return;
-    }
-  }
+  *y += server.config->titlebar_height;
 }
 
 bool
@@ -1059,17 +1041,7 @@ toplevel_get_container_start_position(struct mwc_toplevel *toplevel, int32_t *x,
 
   if(!toplevel->titlebar.has) return;
 
-  switch(server.config->titlebar_position) {
-    case MWC_UP: {
-      *y -= server.config->titlebar_size;
-      return;
-    }
-    case MWC_LEFT: {
-      *x -= server.config->titlebar_size;
-      return;
-    }
-    default: return;
-  }
+  *y -= server.config->titlebar_height;
 }
 
 void
@@ -1092,18 +1064,7 @@ toplevel_get_current_container_size(struct mwc_toplevel *toplevel, uint32_t *wid
 
   if(!toplevel->titlebar.has) return;
 
-  switch(server.config->titlebar_position) {
-    case MWC_UP:
-    case MWC_DOWN: {
-      *height += server.config->titlebar_size;
-      return;
-    }
-    case MWC_RIGHT:
-    case MWC_LEFT: {
-      *width += server.config->titlebar_size;
-      return;
-    }
-  }
+  *height += server.config->titlebar_height;
 }
 
 uint32_t
