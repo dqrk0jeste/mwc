@@ -49,12 +49,37 @@ hex_to_unsigned_decimal(char *hex, size_t len) {
 }
 
 bool
-parse_color_rgba_or_hex(char **args, size_t arg_count, float *dest) {
+try_parse_color_hex(char *s, float *dest) {
+  size_t len = strlen(s);
+  if(len != 6 && len != 8) return false;
+
+  if(len == 6) {
+    dest[0] = clamp(hex_to_unsigned_decimal(s + 0, 2), 0, 255) / 255.0;
+    dest[1] = clamp(hex_to_unsigned_decimal(s + 2, 2), 0, 255) / 255.0;
+    dest[2] = clamp(hex_to_unsigned_decimal(s + 4, 2), 0, 255) / 255.0;
+    dest[3] = 1.0;
+  } else if(len == 8) {
+    dest[0] = clamp(hex_to_unsigned_decimal(s + 0, 2), 0, 255) / 255.0;
+    dest[1] = clamp(hex_to_unsigned_decimal(s + 2, 2), 0, 255) / 255.0;
+    dest[2] = clamp(hex_to_unsigned_decimal(s + 4, 2), 0, 255) / 255.0;
+    dest[3] = clamp(hex_to_unsigned_decimal(s + 6, 2), 0, 255) / 255.0;
+  }
+
+  return true;
+}
+
+bool
+try_parse_color_rgba_or_hex(char **args, size_t arg_count, float *dest) {
   if(arg_count == 4) {
     dest[0] = clamp(atoi(args[0]), 0, 255) / 255.0;
     dest[1] = clamp(atoi(args[1]), 0, 255) / 255.0;
     dest[2] = clamp(atoi(args[2]), 0, 255) / 255.0;
     dest[3] = clamp(atoi(args[3]), 0, 255) / 255.0;
+  } else if(strlen(args[0]) == 6) {
+    dest[0] = clamp(hex_to_unsigned_decimal(args[0] + 0, 2), 0, 255) / 255.0;
+    dest[1] = clamp(hex_to_unsigned_decimal(args[0] + 2, 2), 0, 255) / 255.0;
+    dest[2] = clamp(hex_to_unsigned_decimal(args[0] + 4, 2), 0, 255) / 255.0;
+    dest[3] = 1.0;
   } else if(strlen(args[0]) == 8) {
     dest[0] = clamp(hex_to_unsigned_decimal(args[0] + 0, 2), 0, 255) / 255.0;
     dest[1] = clamp(hex_to_unsigned_decimal(args[0] + 2, 2), 0, 255) / 255.0;
@@ -478,15 +503,15 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
   if(strcmp(keyword, "min_toplevel_size") == 0) {
     if(arg_count < 1) goto invalid;
 
-    c->min_toplevel_size = clamp(atoi(args[0]), 0, INT_MAX);
+    c->min_toplevel_size = max(atoi(args[0]), 0);
   } else if(strcmp(keyword, "keyboard_rate") == 0) {
     if(arg_count < 1) goto invalid;
 
-    c->keyboard_rate = clamp(atoi(args[0]), 0, INT_MAX);
+    c->keyboard_rate = max(atoi(args[0]), 0);
   } else if(strcmp(keyword, "keyboard_delay") == 0) {
     if(arg_count < 1) goto invalid;
 
-    c->keyboard_delay = clamp(atoi(args[0]), 0, INT_MAX);
+    c->keyboard_delay = max(atoi(args[0]), 0);
   } else if(strcmp(keyword, "pointer_sensitivity") == 0) {
     if(arg_count < 1) goto invalid;
 
@@ -576,11 +601,11 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
 
     c->cursor_size = clamp(atoi(args[0]), 0, INT_MAX);
   } else if(strcmp(keyword, "inactive_border_color") == 0) {
-    if(!parse_color_rgba_or_hex(args, arg_count, c->inactive_border_color)) {
+    if(!try_parse_color_rgba_or_hex(args, arg_count, c->inactive_border_color)) {
       goto invalid;
     }
   } else if(strcmp(keyword, "active_border_color") == 0) {
-    if(!parse_color_rgba_or_hex(args, arg_count, c->active_border_color)) {
+    if(!try_parse_color_rgba_or_hex(args, arg_count, c->active_border_color)) {
       goto invalid;
     }
   } else if(strcmp(keyword, "output") == 0) {
@@ -752,7 +777,7 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     c->shadows_position.x = atoi(args[0]);
     c->shadows_position.y = atoi(args[1]);
   } else if(strcmp(keyword, "shadows_color") == 0) {
-    if(!parse_color_rgba_or_hex(args, arg_count, c->shadows_color)) {
+    if(!try_parse_color_rgba_or_hex(args, arg_count, c->shadows_color)) {
       goto invalid;
     }
   } else if(strcmp(keyword, "layer_rule") == 0) {
@@ -774,8 +799,18 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
 
     c->titlebar_height = max(atoi(args[0]), 0);
   } else if(strcmp(keyword, "titlebar_color") == 0) {
-    if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_color)) {
+    if(arg_count < 1) goto invalid;
+
+    if(!try_parse_color_hex(args[0], c->titlebar_color_active)) {
       goto invalid;
+    }
+
+    if(arg_count > 1) {
+      if(!try_parse_color_hex(args[1], c->titlebar_color_inactive)) {
+        goto invalid;
+      }
+    } else {
+      memcpy(c->titlebar_color_inactive, c->titlebar_color_active, 4 * sizeof(float));
     }
   } else if(strcmp(keyword, "titlebar_include_close_button") == 0) {
     if(arg_count < 1) goto invalid;
@@ -802,8 +837,20 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
       c->titlebar_close_button_square = true;
     }
   } else if(strcmp(keyword, "titlebar_close_button_color") == 0) {
-    if(!parse_color_rgba_or_hex(args, arg_count, c->titlebar_close_button_color)) {
+    if(arg_count < 1) goto invalid;
+
+    if(!try_parse_color_hex(args[0], c->titlebar_close_button_color_active)) {
       goto invalid;
+    }
+
+    if(arg_count > 1) {
+      if(!try_parse_color_hex(args[1], c->titlebar_close_button_color_inactive)) {
+        goto invalid;
+      }
+    } else {
+      memcpy(c->titlebar_close_button_color_inactive,
+             c->titlebar_close_button_color_active,
+             4 * sizeof(float));
     }
   } else if(strcmp(keyword, "titlebar_center_title") == 0) {
     if(arg_count < 1) goto invalid;

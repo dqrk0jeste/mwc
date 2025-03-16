@@ -118,7 +118,7 @@ struct mwc_config {
 
   /* pointer stuff */
   double pointer_sensitivity;
-  bool pointer_acceleration;
+  enum libinput_config_accel_profile pointer_acceleration;
   struct wl_list pointers;
   bool pointer_left_handed;
 
@@ -164,13 +164,15 @@ struct mwc_config {
 
   /* titlebar */
   uint32_t titlebar_height;
-  float titlebar_color[4];
+  float titlebar_color_active[4];
+  float titlebar_color_inactive[4];
   bool titlebar_include_close_button;
   uint32_t titlebar_close_button_size;
   uint32_t titlebar_close_button_padding;
   bool titlebar_close_button_square;
   bool titlebar_close_button_left;
-  float titlebar_close_button_color[4];
+  float titlebar_close_button_color_active[4];
+  float titlebar_close_button_color_inactive[4];
   bool titlebar_center_title;
 
   /* animations stuff */

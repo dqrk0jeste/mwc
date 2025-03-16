@@ -30,11 +30,11 @@ toplevel_create_titlebar(struct mwc_toplevel *toplevel, uint32_t width, uint32_t
   toplevel->titlebar.tree = wlr_scene_tree_create(toplevel->scene_tree);
   toplevel->titlebar.tree->node.data = toplevel;
 
-  toplevel->titlebar.base = wlr_scene_rect_create(toplevel->titlebar.tree, 0, 0,
-                                                  server.config->titlebar_color);
+  toplevel->titlebar.base = wlr_scene_rect_create(toplevel->titlebar.tree, 0, 0, (float[4]){0});
   wlr_scene_node_lower_to_bottom(&toplevel->titlebar.base->node);
   wlr_scene_node_set_position(&toplevel->titlebar.tree->node, 0, -server.config->titlebar_height);
-  wlr_scene_rect_set_corner_radius(toplevel->titlebar.base, server.config->border_radius,
+  wlr_scene_rect_set_corner_radius(toplevel->titlebar.base,
+                                   max((int32_t)server.config->border_radius - (int32_t)server.config->border_width, 0),
                                    CORNER_LOCATION_TOP & server.config->border_radius_location);
   toplevel->titlebar.base_something.type = MWC_TITLEBAR_BASE;
   toplevel->titlebar.base_something.rect = toplevel->titlebar.base;
@@ -47,10 +47,10 @@ toplevel_create_titlebar(struct mwc_toplevel *toplevel, uint32_t width, uint32_t
   if(server.config->titlebar_include_close_button) {
     uint32_t size = server.config->titlebar_close_button_size;
     toplevel->titlebar.close_button = wlr_scene_rect_create(toplevel->titlebar.tree, size, size,
-                                                            server.config->titlebar_close_button_color);
+                                                            (float[4]){0});
 
     if(!server.config->titlebar_close_button_square) {
-       wlr_scene_rect_set_corner_radius(toplevel->titlebar.close_button, size / 2, CORNER_LOCATION_ALL);
+       wlr_scene_rect_set_corner_radius(toplevel->titlebar.close_button, size / 2 + 1, CORNER_LOCATION_ALL);
     }
 
     toplevel->titlebar.close_button_something.type = MWC_TITLEBAR_CLOSE_BUTTON;
@@ -70,19 +70,30 @@ toplevel_draw_titlebar(struct mwc_toplevel *toplevel) {
   uint32_t width, height;
   toplevel_get_current_buffer_size(toplevel, &width, &height);
 
+
   if(toplevel->titlebar.tree == NULL) {
     toplevel_create_titlebar(toplevel, width, height);
   }
 
   wlr_scene_node_set_enabled(&toplevel->titlebar.tree->node, true);
-
   wlr_scene_rect_set_size(toplevel->titlebar.base, width, server.config->titlebar_height);
 
+  float *color = toplevel == server.focused_toplevel
+    ? server.config->titlebar_color_active
+    : server.config->titlebar_color_inactive;
+  wlr_scene_rect_set_color(toplevel->titlebar.base, color);
+
   if(server.config->titlebar_include_close_button) {
+    float *color = toplevel == server.focused_toplevel
+      ? server.config->titlebar_close_button_color_active
+      : server.config->titlebar_close_button_color_inactive;
+    wlr_scene_rect_set_color(toplevel->titlebar.close_button, color);
+
     uint32_t x = server.config->titlebar_close_button_left
       ? server.config->titlebar_close_button_padding
       : width - server.config->titlebar_close_button_padding - server.config->titlebar_close_button_size;
     uint32_t y = (server.config->titlebar_height - server.config->titlebar_close_button_size) / 2;
+
     wlr_scene_node_set_position(&toplevel->titlebar.close_button->node, x, y);
   }
 }
