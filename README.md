@@ -86,3 +86,5 @@ for detailed documentation see `examples/example.conf`. you can also find the de
 <img src="assets/gallery-2.png" alt="logo" width="500">
 </div>
 
+## donate
+if you want to support this project financially you can do so [here](https://ko-fi.com/darkonikolic)
