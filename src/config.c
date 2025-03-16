@@ -500,11 +500,7 @@ config_free_args(char **args, size_t arg_count) {
 
 bool
 config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg_count) {
-  if(strcmp(keyword, "min_toplevel_size") == 0) {
-    if(arg_count < 1) goto invalid;
-
-    c->min_toplevel_size = max(atoi(args[0]), 0);
-  } else if(strcmp(keyword, "keyboard_rate") == 0) {
+  if(strcmp(keyword, "keyboard_rate") == 0) {
     if(arg_count < 1) goto invalid;
 
     c->keyboard_rate = max(atoi(args[0]), 0);
@@ -856,6 +852,21 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
     if(arg_count < 1) goto invalid;
 
     c->titlebar_center_title = atoi(args[0]);
+  } else if(strcmp(keyword, "titlebar_title_color") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    if(strlen(args[0]) == 6) {
+      c->titlebar_title_color.red = clamp(hex_to_unsigned_decimal(args[0] + 0, 2), 0, 255);
+      c->titlebar_title_color.green = clamp(hex_to_unsigned_decimal(args[0] + 2, 2), 0, 255);
+      c->titlebar_title_color.blue = clamp(hex_to_unsigned_decimal(args[0] + 4, 2), 0, 255);
+    } else if(strlen(args[0]) == 8) {
+      c->titlebar_title_color.red = clamp(hex_to_unsigned_decimal(args[0] + 0, 2), 0, 255);
+      c->titlebar_title_color.green = clamp(hex_to_unsigned_decimal(args[0] + 2, 2), 0, 255);
+      c->titlebar_title_color.blue = clamp(hex_to_unsigned_decimal(args[0] + 4, 2), 0, 255);
+      c->titlebar_title_color.alpha = clamp(hex_to_unsigned_decimal(args[0] + 6, 2), 0, 255);
+    } else {
+      goto invalid;
+    }
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
     free(keyword);
@@ -1036,11 +1047,6 @@ config_set_default_needed_params(struct mwc_config *c) {
     wlr_log(WLR_INFO,
             "cursor_size not specified. using default %ud", c->cursor_size);
   }
-  if(c->min_toplevel_size == 0) {
-    c->min_toplevel_size = 10;
-    wlr_log(WLR_INFO,
-            "min_toplevel_size not specified. using default %ud", c->min_toplevel_size);
-  }
   if(c->master_count == 0) {
     c->master_count = 1;
     wlr_log(WLR_INFO,
@@ -1076,6 +1082,8 @@ config_set_default_needed_params(struct mwc_config *c) {
     c->border_radius_location = CORNER_LOCATION_ALL;
     wlr_log(WLR_INFO, "border_radius_location not specified. using all");
   }
+
+  c->toplevel_minimum_needed_width = c->titlebar_close_button_size + 2 * c->titlebar_close_button_padding;
 }
 
 extern struct mwc_server server;

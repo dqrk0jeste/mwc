@@ -70,6 +70,7 @@ deps = [
   dependency('wlroots-0.18', version: ['>=0.18.0', '<0.19.0'], fallback: 'wlroots'),
   dependency('xkbcommon'),
   dependency('libinput'),
+  dependency('fcft'),
 ]
 
 executable('mwc',

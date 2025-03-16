@@ -2,6 +2,7 @@
 
 #include "helpers.h"
 #include "mwc.h"
+#include "pixman.h"
 
 #include <scenefx/types/fx/blur_data.h>
 #include <scenefx/types/fx/corner_location.h>
@@ -133,7 +134,7 @@ struct mwc_config {
   uint32_t cursor_size;
 
   /* general toplevel and layout stuff */
-  uint32_t min_toplevel_size;
+  uint32_t toplevel_minimum_needed_width;
   float inactive_border_color[4];
   float active_border_color[4];
   double inactive_opacity;
@@ -174,6 +175,7 @@ struct mwc_config {
   float titlebar_close_button_color_active[4];
   float titlebar_close_button_color_inactive[4];
   bool titlebar_center_title;
+  pixman_color_t titlebar_title_color;
 
   /* animations stuff */
   bool animations;

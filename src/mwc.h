@@ -6,6 +6,7 @@
 #include "pointer.h"
 #include "session_lock.h"
 
+#include <stdint.h>
 #include <wayland-server-protocol.h>
 #include <wlr/util/box.h>
 #include <wlr/types/wlr_server_decoration.h>
