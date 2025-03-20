@@ -51,6 +51,11 @@ struct window_rule_opacity {
   double active_value;
 };
 
+struct window_rule_no_titlebar {
+  struct window_rule_regex condition;
+  struct wl_list link;
+};
+
 struct layer_rule_regex {
   bool has;
   regex_t regex;
@@ -104,6 +109,7 @@ struct mwc_config {
     struct wl_list floating;
     struct wl_list size;
     struct wl_list opacity;
+    struct wl_list no_titlebar;
   } window_rules;
 
   struct {

@@ -641,18 +641,16 @@ toplevel_should_float(struct mwc_toplevel *toplevel) {
 
 bool
 toplevel_should_draw_titlebar(struct mwc_toplevel *toplevel) {
-  return server.config->decorations == MWC_DECORATIONS_SERVER_SIDE;
+  if(server.config->decorations != MWC_DECORATIONS_SERVER_SIDE) return false;
 
-  /* TODO: add windowrules for this */
+  struct window_rule_float *w;
+  wl_list_for_each(w, &server.config->window_rules.no_titlebar, link) {
+    if(toplevel_matches_window_rule(toplevel, &w->condition)) {
+      return false;
+    }
+  }
 
-  /*struct window_rule_float *w;*/
-  /*wl_list_for_each(w, &server.config->window_rules.floating, link) {*/
-  /*  if(toplevel_matches_window_rule(toplevel, &w->condition)) {*/
-  /*    return true;*/
-  /*  }*/
-  /*}*/
-  /**/
-  /*return false;*/
+  return true;
 }
 
 struct mwc_toplevel *

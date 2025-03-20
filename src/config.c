@@ -220,6 +220,11 @@ config_add_window_rule(struct mwc_config *c, char *app_id_regex, char *title_reg
       : window_rule->active_value;
 
     wl_list_insert(&c->window_rules.opacity, &window_rule->link);
+  } else if(strcmp(predicate, "no_titlebar") == 0) {
+    struct window_rule_no_titlebar *window_rule = calloc(1, sizeof(*window_rule));
+    window_rule->condition = condition;
+
+    wl_list_insert(&c->window_rules.no_titlebar, &window_rule->link);
   } else {
     wlr_log(WLR_ERROR, "invalid window_rule %s", predicate);
     goto invalid;
@@ -1134,6 +1139,7 @@ config_load() {
   wl_list_init(&c->window_rules.floating);
   wl_list_init(&c->window_rules.size);
   wl_list_init(&c->window_rules.opacity);
+  wl_list_init(&c->window_rules.no_titlebar);
   wl_list_init(&c->layer_rules.blur);
 
   /* you aint gonna have lines longer than 1kB */
@@ -1207,6 +1213,16 @@ config_destroy(struct mwc_config *c) {
       regfree(&wro->condition.title_regex);
     }
     free(wro);
+  }
+  struct window_rule_no_titlebar *wrnt, *wrnt_temp;
+  wl_list_for_each_safe(wrnt, wrnt_temp, &c->window_rules.no_titlebar, link) {
+    if(wrnt->condition.has_app_id_regex) {
+      regfree(&wrnt->condition.app_id_regex);
+    }
+    if(wrnt->condition.has_title_regex) {
+      regfree(&wrnt->condition.title_regex);
+    }
+    free(wrnt);
   }
 
   struct layer_rule_blur *lrb, *lrb_temp;

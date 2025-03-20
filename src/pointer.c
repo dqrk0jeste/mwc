@@ -328,10 +328,18 @@ server_handle_cursor_button(struct wl_listener *listener, void *data) {
   struct mwc_something *something = something_at(server.cursor->x, server.cursor->y,
                                                  &surface, &sx, &sy);
 
+  if(something == NULL) return;
+
   if(something->type == MWC_TITLEBAR_CLOSE_BUTTON
      && event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
     struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
     wlr_xdg_toplevel_send_close(toplevel->xdg_toplevel);
+  } else if(something->type == MWC_TITLEBAR_BASE
+     && event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
+    struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
+    /* we lie here, but its the same thing, the important thing is that its not driven by a shortcut */
+    server.client_driven_move_resize = true;
+    toplevel_start_move(toplevel);
   }
 }
 
