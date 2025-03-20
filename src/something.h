@@ -33,3 +33,6 @@ struct mwc_something *
 something_at(double lx, double ly,
              struct wlr_surface **surface,
              double *sx, double *sy);
+
+void
+focus_something(struct mwc_something *something);

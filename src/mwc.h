@@ -20,11 +20,17 @@
 
 #define STRING_INITIAL_LENGTH 64
 
+enum mwc_cursor_type {
+  MWC_CURSOR_NONE,
+  MWC_CURSOR_CLIENT,
+  MWC_CURSOR_SERVER,
+};
+
 enum mwc_direction {
-  MWC_UP = 1 << 0,
-  MWC_RIGHT = 1 << 1,
-  MWC_DOWN = 1 << 2,
-  MWC_LEFT = 1 << 3,
+  MWC_UP,
+  MWC_RIGHT,
+  MWC_DOWN,
+  MWC_LEFT,
 };
 
 struct mwc_server {
@@ -89,13 +95,6 @@ struct mwc_server {
 	struct wlr_box grabbed_toplevel_initial_box;
 	uint32_t resize_edges;
 	bool client_driven_move_resize;
-
-  /* keeps state about the client cursor when the server initialized move/resize */
-  struct {
-    struct wlr_surface *surface;
-    uint32_t hotspot_x;
-    uint32_t hotspot_y;
-  } client_cursor;
 
   /* active workspace follows mouse */
   struct mwc_workspace *active_workspace;

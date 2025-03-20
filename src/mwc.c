@@ -100,7 +100,6 @@ server_handle_request_cursor_shape(struct wl_listener *listener, void *data) {
   if(focused_client == event->seat_client) {
     const char *name = wlr_cursor_shape_v1_name(event->shape);
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, name);
-    server.client_cursor.surface = NULL;
   }
 }
 
@@ -115,9 +114,6 @@ server_handle_request_cursor(struct wl_listener *listener, void *data) {
      * cursor moves between outputs */
     wlr_cursor_set_surface(server.cursor, event->surface,
                            event->hotspot_x, event->hotspot_y);
-    server.client_cursor.surface = event->surface;
-    server.client_cursor.hotspot_x = event->hotspot_x;
-    server.client_cursor.hotspot_y = event->hotspot_y;
   }
 }
 

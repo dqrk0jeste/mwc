@@ -4,6 +4,7 @@
 
 #include "mwc.h"
 #include "layer_surface.h"
+#include "popup.h"
 #include "session_lock.h"
 
 #include <assert.h>
@@ -88,3 +89,33 @@ something_at(double lx, double ly, struct wlr_surface **surface, double *sx, dou
   return NULL;
 }
 
+void
+focus_something(struct mwc_something *something) {
+  assert(something != NULL);
+
+  switch(something->type) {
+    case MWC_TOPLEVEL: {
+      focus_toplevel(something->toplevel);
+      return;
+    }
+    case MWC_LAYER_SURFACE: {
+      focus_layer_surface(something->layer_surface);
+      return;
+    }
+    case MWC_LOCK_SURFACE: {
+      focus_lock_surface(something->lock_surface);
+      return;
+    }
+    case MWC_TITLEBAR_BASE:
+    case MWC_TITLEBAR_CLOSE_BUTTON: {
+      struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
+      focus_toplevel(toplevel);
+      return;
+    }
+    case MWC_POPUP: {
+      struct mwc_popup *popup = something->popup;
+      focus_something(popup_get_root_parent(popup));
+      return;
+    }
+  }
+}

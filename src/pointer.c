@@ -12,6 +12,7 @@
 #include "layer_surface.h"
 #include "workspace.h"
 
+#include <bits/time.h>
 #include <libinput.h>
 #include <stdint.h>
 #include <wayland-server-core.h>
@@ -133,12 +134,12 @@ server_reset_cursor_mode() {
   server.grabbed_toplevel = NULL;
   server.client_driven_move_resize = false;
 
-  if(server.client_cursor.surface != NULL) {
-    wlr_cursor_set_surface(server.cursor, server.client_cursor.surface,
-                           server.client_cursor.hotspot_x, server.client_cursor.hotspot_y);
-  } else {
-    wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "default");
-  }
+  wlr_seat_pointer_clear_focus(server.seat);
+
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+
+  pointer_handle_focus(now.tv_sec * 1000 + now.tv_nsec / 1000, false);
 }
 
 void
@@ -196,7 +197,6 @@ pointer_handle_focus(uint32_t time, bool handle_keyboard_focus) {
   struct wlr_surface *surface = NULL;
   struct mwc_something *something = something_at(server.cursor->x, server.cursor->y,
                                                  &surface, &sx, &sy);
-
   if(something == NULL) {
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "default");
     /* clear pointer focus so future button events and such are not sent to
@@ -207,39 +207,29 @@ pointer_handle_focus(uint32_t time, bool handle_keyboard_focus) {
 
   if(something->type == MWC_TITLEBAR_CLOSE_BUTTON) {
     wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "pointer");
-  } else if(server.client_cursor.surface != NULL) {
-    wlr_cursor_set_surface(server.cursor, server.client_cursor.surface,
-                           server.client_cursor.hotspot_x, server.client_cursor.hotspot_y);
-  }
-
-  if((something->type == MWC_TITLEBAR_BASE || something->type == MWC_TITLEBAR_CLOSE_BUTTON)
-     && handle_keyboard_focus) {
-    struct mwc_toplevel *toplevel = something->rect->node.parent->node.data;
-    focus_toplevel(toplevel);
-    return;
+    wlr_seat_pointer_clear_focus(seat);
+  } else if(something->type == MWC_TITLEBAR_BASE) {
+    wlr_cursor_set_xcursor(server.cursor, server.cursor_mgr, "default");
+    wlr_seat_pointer_clear_focus(seat);
   }
 
   if(handle_keyboard_focus) {
-    if(something->type == MWC_TOPLEVEL) {
-      focus_toplevel(something->toplevel);
-    } else if(something->type == MWC_LAYER_SURFACE){
-      focus_layer_surface(something->layer_surface);
-    } else if(something->type == MWC_LOCK_SURFACE) {
-      focus_lock_surface(something->lock_surface);
+    focus_something(something);
+  }
+
+  if(surface != NULL) {
+    struct wlr_pointer_constraint_v1 *wlr_constraint =
+      wlr_pointer_constraints_v1_constraint_for_surface(server.pointer_contrains_manager,
+                                                        surface, server.seat);
+    if(wlr_constraint == NULL || wlr_constraint->data == NULL) {
+      server.current_constraint = NULL;
+    } else {
+      constraint_set_as_current(wlr_constraint->data);
     }
-  }
 
-  struct wlr_pointer_constraint_v1 *wlr_constraint =
-    wlr_pointer_constraints_v1_constraint_for_surface(server.pointer_contrains_manager,
-                                                      surface, server.seat);
-  if(wlr_constraint == NULL || wlr_constraint->data == NULL) {
-    server.current_constraint = NULL;
-  } else {
-    constraint_set_as_current(wlr_constraint->data);
+    wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
+    wlr_seat_pointer_notify_motion(seat, time, sx, sy);
   }
-
-  wlr_seat_pointer_notify_enter(seat, surface, sx, sy);
-  wlr_seat_pointer_notify_motion(seat, time, sx, sy);
 }
 
 void
