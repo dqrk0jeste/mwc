@@ -55,7 +55,8 @@ src = [
   'src/session_lock.c',
   'src/something.c',
   'src/toplevel.c',
-  'src/workspace.c'
+  'src/workspace.c',
+  'src/text_buffer.c',
 ]
 
 inc = [
@@ -68,6 +69,7 @@ deps = [
   dependency('wayland-server'),
   dependency('scenefx-0.2', version: '>=0.2.0', fallback: 'scenefx'),
   dependency('wlroots-0.18', version: ['>=0.18.0', '<0.19.0'], fallback: 'wlroots'),
+  dependency('pixman-1'),
   dependency('xkbcommon'),
   dependency('libinput'),
   dependency('fcft'),

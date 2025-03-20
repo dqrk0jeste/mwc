@@ -11,6 +11,7 @@
 #include "toplevel.h"
 #include "config.h"
 #include "workspace.h"
+#include "text_buffer.h"
 
 #include <limits.h>
 #include <stdint.h>
@@ -57,6 +58,10 @@ toplevel_create_titlebar(struct mwc_toplevel *toplevel, uint32_t width, uint32_t
     toplevel->titlebar.close_button_something.rect = toplevel->titlebar.close_button;
   }
 
+  if(server.config->titlebar_include_title && server.config->font != NULL) {
+    toplevel->titlebar.title = wlr_scene_buffer_create(toplevel->titlebar.tree, NULL);
+  }
+
   wlr_scene_node_lower_to_bottom(&toplevel->titlebar.tree->node);
 }
 
@@ -95,6 +100,14 @@ toplevel_draw_titlebar(struct mwc_toplevel *toplevel) {
     uint32_t y = (server.config->titlebar_height - server.config->titlebar_close_button_size) / 2;
 
     wlr_scene_node_set_position(&toplevel->titlebar.close_button->node, x, y);
+  }
+
+  if(server.config->titlebar_include_title && server.config->font != NULL) {
+    if(toplevel->titlebar.title->buffer == NULL) {
+      struct pixman_buffer *buffer = text_buffer_create(toplevel->xdg_toplevel->title,
+                                                        1000, server.config->titlebar_height);
+      wlr_scene_buffer_set_buffer_with_damage(toplevel->titlebar.title, &buffer->base, NULL);
+    }
   }
 }
 

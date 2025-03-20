@@ -180,8 +180,11 @@ struct mwc_config {
   bool titlebar_close_button_left;
   float titlebar_close_button_color_active[4];
   float titlebar_close_button_color_inactive[4];
+  bool titlebar_include_title;
   bool titlebar_center_title;
   pixman_color_t titlebar_title_color;
+  /* will be generated from the name specified by `titlebar_title_font`, may be NULL */
+  struct fcft_font *font;
 
   /* animations stuff */
   bool animations;

@@ -1,3 +1,4 @@
+#include <fcft/fcft.h>
 #include <pthread.h>
 #include <scenefx/render/fx_renderer/fx_renderer.h>
 #include <scenefx/types/wlr_scene.h>
@@ -160,6 +161,9 @@ main(int argc, char *argv[]) {
   } else {
     wlr_log_init(WLR_INFO, NULL);
   }
+
+  /* will leave this for now */
+  fcft_init(FCFT_LOG_COLORIZE_AUTO, false, FCFT_LOG_CLASS_DEBUG);
 
   server.config = config_load();
   if(server.config == NULL) {
@@ -448,6 +452,7 @@ main(int argc, char *argv[]) {
   wl_display_destroy(server.wl_display);
 
   config_destroy(server.config);
+  fcft_fini();
 
   return 0;
 }

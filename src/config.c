@@ -1,3 +1,4 @@
+#include <fcft/fcft.h>
 #include <regex.h>
 #include <scenefx/types/fx/blur_data.h>
 #include <scenefx/types/fx/corner_location.h>
@@ -853,6 +854,10 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
              c->titlebar_close_button_color_active,
              4 * sizeof(float));
     }
+  } else if(strcmp(keyword, "titlebar_include_title") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->titlebar_include_title = atoi(args[0]);
   } else if(strcmp(keyword, "titlebar_center_title") == 0) {
     if(arg_count < 1) goto invalid;
 
@@ -871,6 +876,13 @@ config_handle_value(struct mwc_config *c, char *keyword, char **args, size_t arg
       c->titlebar_title_color.alpha = clamp(hex_to_unsigned_decimal(args[0] + 6, 2), 0, 255);
     } else {
       goto invalid;
+    }
+  } else if(strcmp(keyword, "titlebar_title_font") == 0) {
+    if(arg_count < 1) goto invalid;
+
+    c->font = fcft_from_name(1, (const char **)&args[0], NULL);
+    if(c->font == NULL) {
+      wlr_log(WLR_ERROR, "error while loading a font %s, title wont be drawn", args[0]);
     }
   } else {
     wlr_log(WLR_ERROR, "invalid keyword %s", keyword);
@@ -1242,6 +1254,10 @@ config_destroy(struct mwc_config *c) {
   wl_list_for_each_safe(p, p_temp, &c->pointers, link) {
     free(p->name);
     free(p);
+  }
+
+  if(c->font != NULL) {
+    fcft_destroy(c->font);
   }
 
   free(c->cursor_theme);
